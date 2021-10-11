@@ -1,0 +1,27 @@
+#+TITLE: Ftw
+
+#+begin_src scheme
+(import :drewc/ftw :std/format)
+
+(def pgui-ftw-http-server #f)
+
+(def (ensure-ftw-server! address: (address "127.0.0.1") port: (port 8389))
+ (def saddress (format "~a:~a" address port))
+ (or pgui-ftw-http-server
+     (let ((s (start-ftw-http-server! saddress)))
+       (set! pgui-ftw-http-server s)
+       s)))
+
+(def static-root-dir (current-directory))
+(define-endpoint js-files "^/js/(.*)$" priority: 1024)
+(define-endpoint css-files "^/css/(.*)$" priority: 1024)
+
+(def (make-getter where)
+  (lambda (filename)
+    (http-response-static-file*
+     (path-expand (string-append where filename)
+                  static-root-dir))))
+
+(def js-files/GET (make-getter "js/"))
+(def css-files/GET (make-getter "css/"))
+#+end_src
