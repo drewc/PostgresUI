@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+gxi -e "(import :drewc/gerbil-swank :gerbil/gambit/threads)" \
+    -e "(spawn start-swank 4205)" -e '(load "server/httpd.ss")' -

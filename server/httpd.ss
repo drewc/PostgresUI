@@ -1,6 +1,3 @@
-#+TITLE: PostgreSQL For The Web!
-
-#+begin_src scheme :tangle httpd.ss
 (import :drewc/ftw :std/format)
 
 (def pgui-ftw-http-server #f)
@@ -26,6 +23,3 @@
 (def js-files/GET (make-getter "js/"))
 (def css-files/GET (make-getter "css/"))
 (def html-files/GET (make-getter "html/"))
-
-
-#+end_src
