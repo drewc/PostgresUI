@@ -1,0 +1,28 @@
+#+TITLE: Vuejs: Make things simple
+
+The UI is browser based. We want to keep things as simple as possible.
+https://v3.vuejs.org/ is what I chose.
+
+At the same time, from experience, we want to avoid massive frameworks and cli's
+and npm packages as I do not want/need to update everything all the time in
+order for it to work ;).
+
+
+* Vue V3 and emacs highlight
+
+#+begin_src emacs-lisp
+(defconst vue--front-tag-regex
+  (concat "<%s"                        ; The tag name
+          "\\(?:"                      ; Zero of more of...
+          "\\(?:\\s-+" vue--not-lang-key "[\"'][^\"']*?[\"']\\)" ; Any optional key-value pairs like type="foo/bar".
+          ;; ^ Disallow "lang" in k/v pairs to avoid matching regions with non-default languages
+          "\\|\\(?:\\s-+setup\\)"      ; The optional "setup" attribute
+          "\\|\\(?:\\s-+module\\)"      ; The optional "module" attribute
+          "\\)*"
+          "\\s-*>\n")                     ; The end of the tag
+  "A regular expression for the starting tags of template areas.
+To be formatted with the tag name.")
+
+(setq vue-initialized nil)
+
+#+end_src

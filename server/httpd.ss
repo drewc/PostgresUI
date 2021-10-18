@@ -1,8 +1,10 @@
+(export #t)
+
 (import :drewc/ftw :std/format)
 
 (def pgui-ftw-http-server #f)
 
-(def (ensure-ftw-server! address: (address "127.0.0.1") port: (port 8389))
+(def (ensure-pgui-ftw-server! address: (address "127.0.0.1") port: (port 8389))
  (def saddress (format "~a:~a" address port))
  (or pgui-ftw-http-server
      (let ((s (start-ftw-http-server! saddress)))

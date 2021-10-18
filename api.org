@@ -1,0 +1,102 @@
+#+TITLE: API: client and server
+
+
+The API server starts with ~/api/~.
+
+
+
+* Client
+:PROPERTIES:
+:ID:       737e5278-0a51-42f7-bb5a-3bfa45bebf22
+:END:
+
+In [[file:pgui/src/main.js][main.js]] There's a line that loads ~/js/pgAPI.js~
+
+#+begin_src js
+import pgAPI from '../../js/pgAPI.js'
+window.pgAPI = pgAPI;
+#+end_src
+
+
+** ~pgAPI~ module and Object
+
+
+We want the UI to react to changes. We also want it to be very simple both on code and understanding said code.
+
+This seems to work in exactly that way!
+
+We can make the API reactive and have ~pgAPI.api~ as a reference to itself.
+
+#+begin_src javascript :noweb-ref re-pg-api
+export const api = reactive(pgAPI);
+pgAPI.api = api;
+#+end_src
+
+** Postgres Servers
+
+In [[id:27a4619b-e979-4b25-b154-6fff38826791][Login Client]] after loging in we set a uuid. So, if we have such a property
+this server is live.
+
+#+begin_src js :noweb-ref isServerLive
+export function isServerLive(server) {
+    return server.hasOwnProperty('uuid');
+}
+#+end_src
+
+Servers have a prototype.
+
+#+begin_src js :noweb-ref pgServer
+export function pgServer(args) {
+    Object.assign(this, args)
+}
+
+pgServer.prototype.isLive = function() { return isServerLive(this); }
+#+end_src
+
+
+** file pgAPI.js
+:PROPERTIES:
+:ID:       af8e629a-0cb3-4f2c-9f71-92ad76e6eb2c
+:END:
+Here's where that file is tangled.
+
+#+begin_src js :tangle "js/pgAPI.js" :noweb yes
+import { get as aget } from 'axios';
+import { post as apost } from 'axios';
+import { reactive, ref } from 'vue';
+
+import { getServersHistory, setServersHistoryItem  } from './history'
+
+export const version = 0.1
+
+export const get = aget;
+export function post (api, args) {
+    let uri = "/api/" + api
+    // console.log('Post:', uri, args)
+    return apost(uri, args);
+};
+
+
+<<isServerLive>>
+
+<<pgServer>>
+
+export const pgAPI = {
+    version, get, post, ref,
+    getServersHistory, setServersHistoryItem,
+    isServerLive, pgServer
+
+}
+
+<<re-pg-api>>
+
+
+
+export const servers = ref(getServersHistory().map(s => new pgServer(s)));
+
+api.servers = servers;
+
+export default pgAPI;
+#+end_src
+
+#+RESULTS:

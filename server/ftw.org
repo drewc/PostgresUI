@@ -1,11 +1,18 @@
 #+TITLE: PostgreSQL For The Web!
 
+* /File/ ~server/httpd.ss~
+:PROPERTIES:
+:ID:       f2001572-534b-40c0-8995-633dfbec70db
+:END:
+
 #+begin_src scheme :tangle httpd.ss
+(export #t)
+
 (import :drewc/ftw :std/format)
 
 (def pgui-ftw-http-server #f)
 
-(def (ensure-ftw-server! address: (address "127.0.0.1") port: (port 8389))
+(def (ensure-pgui-ftw-server! address: (address "127.0.0.1") port: (port 8389))
  (def saddress (format "~a:~a" address port))
  (or pgui-ftw-http-server
      (let ((s (start-ftw-http-server! saddress)))

@@ -1,0 +1,18 @@
+:PROPERTIES:
+:ID:       144dcb4b-221f-475e-8d80-2dfeaf3ca6a5
+:END:
+#+TITLE: Configuration
+
+There are a few things that (could) be set at runtime.
+
+#+begin_src scheme :tangle conf.ss
+(export #t)
+
+(def pgui-wwwroot (current-directory))
+
+(def (conf-value . vars)
+  (if (eq? (car vars) 'pgui-wwwroot)
+    pgui-wwwroot
+    (void)))
+#+end_src
+

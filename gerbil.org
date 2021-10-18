@@ -1,0 +1,15 @@
+:PROPERTIES:
+:ID:       e0eb3080-93b5-4d49-bac6-6b29b6793d28
+:END:
+#+TITLE: Gerbil: Packages and Build Scripts
+
+#+begin_src gerbil :tangle gerbil.pkg
+(package: drewc/pgui)
+#+end_src
+
+#+begin_src gerbil :tangle build.ss :shebang #!/usr/bin/env gxi
+(import :std/build-script)
+
+(defbuild-script
+  '("conf" "server/httpd"))
+#+end_src

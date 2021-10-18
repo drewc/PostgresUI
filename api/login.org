@@ -1,0 +1,96 @@
+#+TITLE: Login API: Client and server.
+
+To make the client global there's a ~window.pgAPI~.
+
+* Client
+:PROPERTIES:
+:ID:       27a4619b-e979-4b25-b154-6fff38826791
+:END:
+
+#+begin_src js :tangle login.js
+import { get } from 'axios'
+import { api, pgAPI, post } from "../js/pgAPI"
+import { ref } from 'vue'
+
+
+export function pgLogin (host, port,username, passwd = false, db = username) {
+    let loginData = {
+        host: host,
+        port: port,
+        user: username,
+        passwd: passwd,
+        db: db
+    };
+    console.log('pgLogin', loginData)
+    return post('pgLogin', loginData)
+        .then(res => {
+            delete loginData.passwd;
+            api.setServersHistoryItem(loginData)
+            loginData.uuid = res.data.uuid;
+            api.servers.push(loginData);
+            return loginData;
+        })
+        .catch(e => {
+            if (e.response) {
+                console.log('pgLogin error: ', e.response.data.error) ;
+                return e.response.data
+            }  else { throw(e) }
+        })
+};
+
+pgAPI.pgLogin = pgLogin;
+
+export default {
+    api, pgLogin
+}
+
+#+end_src
+
+* Server
+
+~/api/pgLogin~ endpoint
+
+#+begin_src scheme
+(define-json-endpoint pgLogin "/api/pgLogin")
+
+(extern display-exception)
+
+(def (pgLogin/POST)
+  (def jso (http-request-body-json*))
+  (def s (hash-get jso 'host))
+  (def po (hash-get jso 'port))
+  (def u (hash-get jso 'user))
+  (def p (hash-get jso 'passwd))
+  (def d (hash-get jso 'db))
+  (try
+   (let ((uuid (pgui-sql-connect host: s user: u passwd: p db: d)))
+     (respond/JSON (list->hash-table`((uuid . ,uuid)))))
+   (catch (e) (respond/JSON code: 401
+                            (list->hash-table
+                             `((error . ,(with-output-to-string "" (cut display-exception e)))))))))
+#+end_src
+
+** /File/ ~/api/login.ss~
+:PROPERTIES:
+:ID:       a2f12654-f585-401d-b25c-4c55451d6e93
+:END:
+
+#+begin_src scheme :tangle login.ss
+(import :drewc/ftw :std/ misc/uuid :std/sugar
+        :std/db/postgresql :std/db/dbi)
+
+(def default-connection-table (make-hash-table))
+(def current-connection-table (make-parameter default-connection-table))
+
+(begin
+  (def (db<-uuid uuid)
+    (hash-get (current-connection-table) uuid))
+       
+  (def uuid->db db<-uuid))
+
+(def (pgui-sql-connect . args)
+  (def uuid (uuid->string (random-uuid)))
+  (def db (apply sql-connect postgresql-connect args))
+  (hash-put! (current-connection-table) uuid db)
+  uuid)
+#+end_src
