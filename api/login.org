@@ -7,9 +7,9 @@ To make the client global there's a ~window.pgAPI~.
 :ID:       27a4619b-e979-4b25-b154-6fff38826791
 :END:
 
-#+begin_src js :tangle login.js
+#+begin_src js :tangle ../pgui/src/assets/js/login.js
 import { get } from 'axios'
-import { api, pgAPI, post } from "../js/pgAPI"
+import { api, pgAPI, post } from "./pgAPI"
 import { ref } from 'vue'
 
 
@@ -21,9 +21,10 @@ export function pgLogin (host, port,username, passwd = false, db = username) {
         passwd: passwd,
         db: db
     };
-    console.log('pgLogin', loginData)
+    console.log('Trying pgLogin', loginData)
     return post('pgLogin', loginData)
         .then(res => {
+            console.warn("Login Success?", res)
             delete loginData.passwd;
             api.setServersHistoryItem(loginData)
             loginData.uuid = res.data.uuid;
@@ -31,7 +32,7 @@ export function pgLogin (host, port,username, passwd = false, db = username) {
             return loginData;
         })
         .catch(e => {
-            if (e.response) {
+            if (e.response && e.response.data) {
                 console.log('pgLogin error: ', e.response.data.error) ;
                 return e.response.data
             }  else { throw(e) }
@@ -50,10 +51,8 @@ export default {
 
 ~/api/pgLogin~ endpoint
 
-#+begin_src scheme
+#+begin_src scheme :noweb-ref pgLogin-endpoint
 (define-json-endpoint pgLogin "/api/pgLogin")
-
-(extern display-exception)
 
 (def (pgLogin/POST)
   (def jso (http-request-body-json*))
@@ -67,7 +66,9 @@ export default {
      (respond/JSON (list->hash-table`((uuid . ,uuid)))))
    (catch (e) (respond/JSON code: 401
                             (list->hash-table
-                             `((error . ,(with-output-to-string "" (cut display-exception e)))))))))
+                             `((error . ,(with-output-to-string
+                                           ""
+                                           (cut ##display-exception e)))))))))
 #+end_src
 
 ** /File/ ~/api/login.ss~
@@ -75,9 +76,10 @@ export default {
 :ID:       a2f12654-f585-401d-b25c-4c55451d6e93
 :END:
 
-#+begin_src scheme :tangle login.ss
-(import :drewc/ftw :std/ misc/uuid :std/sugar
-        :std/db/postgresql :std/db/dbi)
+#+begin_src scheme :tangle login.ss :noweb yes
+(export #t)
+(import :drewc/ftw :std/misc/uuid :std/sugar
+        :std/db/postgresql :std/db/dbi :std/error)
 
 (def default-connection-table (make-hash-table))
 (def current-connection-table (make-parameter default-connection-table))
@@ -93,4 +95,6 @@ export default {
   (def db (apply sql-connect postgresql-connect args))
   (hash-put! (current-connection-table) uuid db)
   uuid)
+
+<<pgLogin-endpoint>>
 #+end_src

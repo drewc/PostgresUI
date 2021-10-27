@@ -1,34 +1,245 @@
-:PROPERTIES:
-:ID:       3faa1cd7-4f83-44a3-9b21-46e8145ef7a9
-:END:
 #+TITLE: pgREPL: PostgreSHELL, IDE type thing
 
+This is really where it comes together. When acting as a shell, and hitting
+enter, when the last item that is not whitespace was a semicolon, we submit the
+statement.
 
+We can ask the prototype for the [[file:codemirror.org::#lastChar][lastChar]].
 
-This is really where it comes together.
+If it's a semicolon we give out the query event. Otherwise, Pass.
 
-#+begin_src vue :tangle ./pgui/src/components/pgREPL.vue
+We map the ~Enter~ key to do just that. [[file:codemirror/doc/manual.org::#key-maps][Key Maps]] is the way.
+
+#+begin_src js :noweb-ref enter-key
+function addEnterMap(cm, self=getCurrentInstance()) {
+    const extraKeys = {
+        ...cm.options.extraKeys,
+        Enter:  function (cm) {
+            // console.log("Hit Enter!!", self, cm.getValue(), cm.lastChar())
+            if (cm.lastChar() === ";") {
+                self.emit('query', cm)
+            } else {
+                return globalCodeMirror.Pass
+            }
+        }
+    }
+
+    console.log('Adding Enter', extraKeys)
+    cm.setOption("extraKeys", extraKeys);
+
+}
+
+#+end_src
+
+* View the Results
+
+#+begin_src vue :noweb-ref results-view
+<div style="max-height: 60vh; overflow: auto; display: flex; "
+     class="uk-flex uk-flex-column-reverse">
+  <div v-for="res in [...results].reverse()">
+    <ResultsTable :result="res" />
+  </div>
+  </div>
+#+end_src
+
+* Query from a Statement!
+
+This entire point of the REPL.
+
+#+begin_src js :noweb-ref queryCodeMirror
+
+function queryCodeMirror(cm = codemirror, server = currentServer.value) {
+   console.log('Querying:', cm.getValue);
+    return prepareCodeMirror(cm, server).then(stmt => {
+     if (!!stmt && stmt.error) {
+         error.value = stmt;
+         return stmt
+     } else if (!stmt) {
+         return null;
+      } else {
+          return stmt.query().then(rstmt => {
+              Object.assign(stmt, rstmt)
+              // console.log('add results of query', stmt)
+              results.value.push(stmt)
+          })
+
+      }
+    })
+        .catch(e => {
+            console.error('Here Now Like err!', e.message,  e.response && e.response.data)
+            window.err = e;
+        })
+
+}
+#+end_src
+
+* Prepare Statement
+
+When the statement is not complete we get a certain error. When that happens we simply ~newlineAndIndent~.
+
+#+begin_src js
+{
+    code: "42601",
+    display: "postgresql-prepare!: [sql-error] syntax error at e…) (F . scan.l) (L . 1172) (R . scanner_yyerror) \n",
+    message: "syntax error at end of input",
+    type: "sql-error"
+}
+#+end_src
+
+#+begin_src js :noweb-ref prep-stmt
+
+function prepareCodeMirror(cm = codemirror, server = currentServer.value) {
+    //     return cm.prepareSQL(cm, server);
+    // }
+
+    console.log('prepping', server, cm.getValue())
+
+    const stmt = new pgAPI.SqlStatement(
+        { text: cm.getValue(), uuid: server.uuid}
+    );
+
+    error.value = false;
+    return stmt.prepare()
+        .then(stmt => {
+            // console.log('Prepped!', stmt)
+            return stmt
+        })
+
+        .catch(e => {
+            if (e.response && e.response.data && e.response.data.error) {
+                const err = e.response.data.error;
+                console.log('Endpoint Error:', err)
+                if (err.code = "42601") {
+                    cm.execCommand("newlineAndIndent");
+                    error.value = err;
+                    return null;
+                } else {
+                    return { error: e.response.data.error }
+                }
+            } else {
+                console.warn('Unknown error:', e)
+                return { error: e }
+            }
+        });
+}
+
+globalCodeMirror.prototype.prepareSQL =
+    function (server = currentServer.value) {
+        const cm = this;
+        return prepareCodeMirror(cm, server)
+    }
+
+#+end_src
+* /File/ pgREPL.vue
+:PROPERTIES:
+:ID:       1cc75ab7-2037-4b81-877a-d92a3c809fa5
+:END:
+
+#+begin_src vue :tangle ./pgui/src/components/pgREPL.vue :noweb yes
 <script setup>
-import { ref } from 'vue'
-import { api, pgAPI, post } from "../../../js/pgAPI"
+import { ref, getCurrentInstance } from 'vue'
+import pgAPI from './js/pgAPI'
 import PgLogin from './PgLogin.vue'
-console.log('setup REPL!')
+import CodeMirror from './CodeMirror.vue'
+import globalCodeMirror from 'codemirror'
+import ClusterizeTable from './Clusterize.vue'
+// import Clusterize from 'clusterize.js'
+
+import { onMounted } from 'vue'
+
+import XLSX from 'xlsx'
+import ResultsTable from './ResultsTable.vue'
+
+const self =  getCurrentInstance();
+
+var data = ['<tr>…</tr>', '<tr>…</tr>'];
+
+
+// console.log('setup REPL!')
 
 const servers = pgAPI.servers
 
 const currentServer = ref(
-    servers.value.length > 0 ? servers.value.slice(-1)[0] : undefined)
+    servers.value && servers.value.length > 0 ? servers.value.slice(-1)[0] : undefined)
+
+let codemirror ;
+
+const error = ref();
+const results = ref([])
+
+
+<<enter-key>>
+
+<<prep-stmt>>
+
+<<queryCodeMirror>>
+
+globalCodeMirror.prototype.prepareSQL = prepareCodeMirror;
+
+// console.log('toop', getCurrentInstance())
+function codeMirrorInit(cm) {
+  codemirror = cm;
+  addEnterMap(cm);
+  window.dbgCodeMirror = cm
+  // console.log("New CodeMirror", cm)
+}
 
 function innerWidth() { return window.innerWidth };
 
 function isMobile () { return innerWidth() <= 640 }
 
+
+// function onChange(cm, change) {
+//   console.log("args", change,   this.$emit)
+
+//     console.log('lastLine', cm.lastLine())
+
+//     function lastLine(num) {
+//         const l = cm.getLine(num).trim();
+//         return (l === "" && num !== 0) ? lastLine(num - 1) : l;
+//     }
+
+//     const { from, text } = change;
+//     const { line } = from;
+//     console.log("from", cm.lastLine(), cm.firstLine() )
+
+// }
+
+// function onChanges(cm, changes) {
+//  // console.log("changes", changes)
+// }
+
+  // JavaScript
+var data = ['<tr>…</tr>', '<tr>…</tr>'];
+
+
+
 </script>
 
-<template src="../../../html/pgREPL.html">
+<script>
+</script>
+<!-- <template src="/src/assets/html/pgREPL.html"> -->
+<!-- </template> -->
+
+<template>
+  <<pgrepl-html>>
 </template>
 
-<style src="../../../css/dashboard.css">
+<style src="/src/assets/css/dashboard.css"> </style>
+<style>
+.clusterize-scroll {
+    max-height: 40vh;
+}
+
+.sql-error {
+    position:absolute;
+    z-index: 1234;
+    top: 50%;
+    width: 80%;
+    margin-left: 5%;
+    text-align: center;
+    border: 1px solid;
+}
 </style>
 
 #+end_src
@@ -37,25 +248,23 @@ function isMobile () { return innerWidth() <= 640 }
 
 #+begin_src html :noweb-ref server-left-bar
 <!-- LEFT BAR -->
-  <aside :id="!isMobile() ? 'left-col' : null" class="uk-light">
+  <aside :id="!isMobile() ? 'left-col' : null" class="uk-light"
+         v-if="currentServer && currentServer.uuid">
    <div class="left-logo uk-flex uk-flex-middle">
     <!-- <img class="custom-logo" src="img/dashboard-logo.svg" alt=""> -->
    </div>
    <div class="left-content-box  content-box-dark">
     <!-- <img src="img/avatar.svg" alt="" class="uk-border-circle profile-img"> -->
-    <h4 class="uk-text-center uk-margin-remove-vertical text-light">Server</h4>
-
     <div class="uk-position-relative uk-text-center uk-display-block">
-        <a href="#" class="uk-text-small uk-text-muted uk-display-block uk-text-center" data-uk-icon="icon: triangle-down; ratio: 0.7">{{ currentServer.host }}</a>
+        <a href="#" class="uk-text-small uk-text-muted uk-display-block uk-text-center" data-uk-icon="icon: triangle-down; ratio: 0.7">
+          {{ currentServer.host }}</a>
         <!-- user dropdown -->
         <div class="uk-dropdown user-drop" data-uk-dropdown="mode: click; pos: bottom-center; animation: uk-animation-slide-bottom-small; duration: 150">
          <ul class="uk-nav uk-dropdown-nav uk-text-left">
            <li v-for="server in servers"> {{ server.name }} </li>
-        <li><a href="#"><span data-uk-icon="icon: info"></span> Summary</a></li>
-        <li><a href="#"><span data-uk-icon="icon: refresh"></span> Edit</a></li>
         <li><a href="#"><span data-uk-icon="icon: settings"></span> Configuration</a></li>
         <li class="uk-nav-divider"></li>
-        <li><a href="#"><span data-uk-icon="icon: image"></span> Your Data</a></li>
+        <li><a href="#"><span data-uk-icon="icon: refresh"></span> Change Server </a></li>
         <li class="uk-nav-divider"></li>
         <li><a href="#"><span data-uk-icon="icon: sign-out"></span> Sign Out</a></li>
          </ul>
@@ -133,64 +342,85 @@ function isMobile () { return innerWidth() <= 640 }
 
 #+end_src
 
+* Header
+
+#+begin_src html :noweb-ref repl-page-header
+  <!--HEADER-->
+  <header id="top-head" class="uk-position-fixed">
+   <!-- <div class="uk-container uk-container-expand uk-background-primary"> -->
+   <!--  <nav class="uk-navbar uk-light" data-uk-navbar="mode:click; duration: 250"> -->
+   <!--   <div class="uk-navbar-left"> -->
+   <!--    <div class="uk-navbar-item uk-hidden@m"> -->
+   <!--     <\!-- <a class="uk-logo" href="#"><img class="custom-logo" src="img/dashboard-logo-white.svg" alt=""></a> -\-> -->
+   <!--    </div> -->
+   <!--    <ul class="uk-navbar-nav uk-visible@m"> -->
+   <!--     <li><a href="#">Accounts</a></li> -->
+   <!--     <li> -->
+   <!--      <a href="#">Settings <span data-uk-icon="icon: triangle-down"></span></a> -->
+   <!--      <div class="uk-navbar-dropdown"> -->
+   <!--       <ul class="uk-nav uk-navbar-dropdown-nav"> -->
+   <!--        <li class="uk-nav-header">YOUR ACCOUNT</li> -->
+   <!--        <li><a href="#"><span data-uk-icon="icon: info"></span> Summary</a></li> -->
+   <!--        <li><a href="#"><span data-uk-icon="icon: refresh"></span> Edit</a></li> -->
+   <!--        <li><a href="#"><span data-uk-icon="icon: settings"></span> Configuration</a></li> -->
+   <!--        <li class="uk-nav-divider"></li> -->
+   <!--        <li><a href="#"><span data-uk-icon="icon: image"></span> Your Data</a></li> -->
+   <!--        <li class="uk-nav-divider"></li> -->
+   <!--        <li><a href="#"><span data-uk-icon="icon: sign-out"></span> Logout</a></li> -->
+   <!--       </ul> -->
+   <!--      </div> -->
+   <!--     </li> -->
+   <!--    </ul> -->
+   <!--    <div class="uk-navbar-item uk-visible@s"> -->
+   <!--     <form action="dashboard.html" class="uk-search uk-search-default"> -->
+   <!--      <span data-uk-search-icon></span> -->
+   <!--      <input class="uk-search-input search-field" type="search" placeholder="Search"> -->
+   <!--     </form> -->
+   <!--    </div> -->
+   <!--   </div> -->
+   <!--   <div class="uk-navbar-right"> -->
+   <!--    <ul class="uk-navbar-nav"> -->
+   <!--     <li><a href="#" data-uk-icon="icon:user" title="Your profile" data-uk-tooltip></a></li> -->
+   <!--     <li><a href="#" data-uk-icon="icon: settings" title="Settings" data-uk-tooltip></a></li> -->
+   <!--     <li><a href="#" data-uk-icon="icon:  sign-out" title="Sign Out" data-uk-tooltip></a></li> -->
+   <!--     <li><a class="uk-navbar-toggle" data-uk-toggle data-uk-navbar-toggle-icon href="#offcanvas-nav" title="Offcanvas" data-uk-tooltip></a></li> -->
+   <!--    </ul> -->
+   <!--   </div> -->
+   <!--  </nav> -->
+   <!-- </div> -->
+  </header>
+  <!--/HEADER-->
+
+#+end_src
 * /File/ ~html/pgREPL.html~
 :PROPERTIES:
 :ID:       2218cf65-c8c8-4797-8f2a-48fe4cb6555f
 :END:
 
-#+begin_src html :tangle ./html/pgREPL.html :noweb yes
-  <!--HEADER-->
-  <header id="top-head" class="uk-position-fixed">
-   <div class="uk-container uk-container-expand uk-background-primary">
-    <nav class="uk-navbar uk-light" data-uk-navbar="mode:click; duration: 250">
-     <div class="uk-navbar-left">
-      <div class="uk-navbar-item uk-hidden@m">
-       <!-- <a class="uk-logo" href="#"><img class="custom-logo" src="img/dashboard-logo-white.svg" alt=""></a> -->
-      </div>
-      <ul class="uk-navbar-nav uk-visible@m">
-       <li><a href="#">Accounts</a></li>
-       <li>
-        <a href="#">Settings <span data-uk-icon="icon: triangle-down"></span></a>
-        <div class="uk-navbar-dropdown">
-         <ul class="uk-nav uk-navbar-dropdown-nav">
-          <li class="uk-nav-header">YOUR ACCOUNT</li>
-          <li><a href="#"><span data-uk-icon="icon: info"></span> Summary</a></li>
-          <li><a href="#"><span data-uk-icon="icon: refresh"></span> Edit</a></li>
-          <li><a href="#"><span data-uk-icon="icon: settings"></span> Configuration</a></li>
-          <li class="uk-nav-divider"></li>
-          <li><a href="#"><span data-uk-icon="icon: image"></span> Your Data</a></li>
-          <li class="uk-nav-divider"></li>
-          <li><a href="#"><span data-uk-icon="icon: sign-out"></span> Logout</a></li>
-         </ul>
-        </div>
-       </li>
-      </ul>
-      <div class="uk-navbar-item uk-visible@s">
-       <form action="dashboard.html" class="uk-search uk-search-default">
-        <span data-uk-search-icon></span>
-        <input class="uk-search-input search-field" type="search" placeholder="Search">
-       </form>
-      </div>
-     </div>
-     <div class="uk-navbar-right">
-      <ul class="uk-navbar-nav">
-       <li><a href="#" data-uk-icon="icon:user" title="Your profile" data-uk-tooltip></a></li>
-       <li><a href="#" data-uk-icon="icon: settings" title="Settings" data-uk-tooltip></a></li>
-       <li><a href="#" data-uk-icon="icon:  sign-out" title="Sign Out" data-uk-tooltip></a></li>
-       <li><a class="uk-navbar-toggle" data-uk-toggle data-uk-navbar-toggle-icon href="#offcanvas-nav" title="Offcanvas" data-uk-tooltip></a></li>
-      </ul>
-     </div>
-    </nav>
-   </div>
-  </header>
-  <!--/HEADER-->
-  <<server-left-bar>>
+#+begin_src html :tangle ./pgui/src/assets/html/pgREPL.html :noweb yes :noweb-ref pgrepl-html
+<<server-left-bar>>
  <!-- CONTENT -->
-  <div id="content" data-uk-height-viewport="expand: true">
+  <div :id="(currentServer && currentServer.uuid) ? 'content' : null" data-uk-height-viewport="expand: true">
 
    <div class="uk-container uk-container-expand">
- <PgLogin msg="PostgreSQL Server Logaain" :currentServer="currentServer"
+     <div style="position:relative">
+        <div v-if="error" class="uk-alert-danger sql-error" uk-alert>
+          <a class="uk-alert-close" @click="error = false"> X </a>
+          <p> {{ error.message || error }} </p>
+        </div>
+
+     <<results-view>>
+
+        <CodeMirror v-if="currentServer && currentServer.uuid"
+             @init="codeMirrorInit($event)"
+             ref="CodeMirrorElement"
+             @query="queryCodeMirror"
+             />
+ <PgLogin v-else msg="PostgreSQL Server Logaain" :currentServer="currentServer"
           @login="currentServer = $event"/>
+
+     </div>
+     <!-- <div> Results: {{ results }} </div> -->
 
     <footer class="uk-section uk-section-small uk-text-center">
      <hr>

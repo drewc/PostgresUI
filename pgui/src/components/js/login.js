@@ -1,5 +1,5 @@
 import { get } from 'axios'
-import { api, pgAPI, post } from "../js/pgAPI"
+import { api, pgAPI, post } from "./pgAPI"
 import { ref } from 'vue'
 
 

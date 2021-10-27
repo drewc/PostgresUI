@@ -1,10 +1,3 @@
-:PROPERTIES:
-:ID:       0038841f-335e-4020-a19a-0fced0af602e
-:END:
-#+TITLE: History: We want to keep a lot of it
-
-#+begin_src js :tangle pgui/src/js/history.js
-
 export function getServersHistory() {
     let servHist = localStorage.getItem('servers');
     if (servHist) {
@@ -26,4 +19,3 @@ export function setServersHistoryItem(server) {
 
     return newHist;
 }
-#+end_src

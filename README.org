@@ -1,0 +1,6 @@
+#+TITLE: PostgresUI
+
+I need an easy way for my clients to access reports. Having a UI just for that
+makes sense!
+
+* PGREPL: A shell for PostgreSQL

@@ -2,4 +2,4 @@
 (import :std/build-script)
 
 (defbuild-script
-  '("conf" "server/httpd"))
+  '("conf" "catalog" "server/httpd" "api/login" "api/prepare" "api/query"))

@@ -3,4 +3,7 @@ DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
 cd "$DIR/../"
 gxi -e "(import :drewc/gerbil-swank :gerbil/gambit/threads)" \
     -e "(spawn start-swank 4205)" -e '(import :drewc/pgui/server/httpd)'\
+    -e '(import :drewc/pgui/api/login)'\
+    -e '(import :drewc/pgui/api/prepare)'\
+    -e '(import :drewc/pgui/api/query)'\
     -e "(ensure-pgui-ftw-server!)" -

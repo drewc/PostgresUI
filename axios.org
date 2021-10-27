@@ -1,0 +1,17 @@
+#+TITLE: Axios: AJ(SON)AX.
+
+We are trying to avoid using NPM packages wherever possible as we do not want to
+rely an that many upstreams.
+
+Axios was the first one I was using as a node_module in the wrong spot.
+
+* Installation
+
+#+begin_src shell
+cd /tmp/ ; cd $(mktemp -d);
+wget https://github.com/axios/axios/archive/refs/tags/v0.24.0.tar.gz
+tar zxvf *
+
+mv -v axios* ~/me/src/PostgresUI/axios/
+# => renamed 'axios-0.24.0/' -> '/home/drewc/me/src/PostgresUI/axios/'
+#+end_src

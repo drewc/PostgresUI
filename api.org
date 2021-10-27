@@ -3,8 +3,6 @@
 
 The API server starts with ~/api/~.
 
-
-
 * Client
 :PROPERTIES:
 :ID:       737e5278-0a51-42f7-bb5a-3bfa45bebf22
@@ -13,9 +11,53 @@ The API server starts with ~/api/~.
 In [[file:pgui/src/main.js][main.js]] There's a line that loads ~/js/pgAPI.js~
 
 #+begin_src js
-import pgAPI from '../../js/pgAPI.js'
+import pgAPI from './src/js/pgAPI.js'
 window.pgAPI = pgAPI;
 #+end_src
+
+** ~new SqlStatement({ text: <text>, name: <name>, server: uuid})~
+
+We want to separate a bunch of things from the GUI. ~SqlStatement~'s are not a part of the UI per se, but certainly a part of the API.
+
+#+begin_src js :noweb-ref SqlStatement
+
+export function SqlStatement(obj) {
+    Object.assign(this, obj);
+};
+
+SqlStatement.prototype.isPrepared = function () {
+    return typeof this.name === "string"
+}
+
+SqlStatement.prototype.prepare = function (obj) {
+   Object.assign(this, obj);
+    console.log('Prepping', this)
+    if (this.isPrepared()) {
+        return new Promise((resolve, reject) => { resolve(this) });
+    } else {
+        return pgAPI.post('prepare', this).then(e => {
+            console.log('SqlStatement was prepped', e)
+            Object.assign(this, e.data)
+            return this
+        })
+    }
+};
+
+SqlStatement.prototype.query = function (obj) {
+    Object.assign(this, obj)
+    if (this.isPrepared()) {
+        return pgAPI.post('query', this).then(q => {
+            const res = Object.assign(Object.create(this), q.data)
+            console.log('Query Results:', res)
+            return res;
+        })
+    
+    } else {
+        return this.prepare(obj).then(stmt => this.query(stmt))
+    }       
+}
+#+end_src
+
 
 
 ** ~pgAPI~ module and Object
@@ -60,9 +102,8 @@ pgServer.prototype.isLive = function() { return isServerLive(this); }
 :END:
 Here's where that file is tangled.
 
-#+begin_src js :tangle "js/pgAPI.js" :noweb yes
-import { get as aget } from 'axios';
-import { post as apost } from 'axios';
+#+begin_src js :tangle "pgui/src/js/pgAPI.js" :noweb yes :mkdirp yes
+import { get as aget, post as apost} from 'axios'
 import { reactive, ref } from 'vue';
 
 import { getServersHistory, setServersHistoryItem  } from './history'
@@ -88,13 +129,17 @@ export const pgAPI = {
 
 }
 
+<<SqlStatement>>
+
+pgAPI.SqlStatement = SqlStatement;
 <<re-pg-api>>
-
-
 
 export const servers = ref(getServersHistory().map(s => new pgServer(s)));
 
 api.servers = servers;
+
+
+
 
 export default pgAPI;
 #+end_src
