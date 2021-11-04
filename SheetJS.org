@@ -10,38 +10,3 @@
 #+begin_src shell
 ~/bin/pnpm install xlsx
 #+end_src
-
-Wait, style for cells without pro?
-
-https://github.com/gitbrent/xlsx-js-style/
-
-#+begin_src shell
-~/bin/pnpm install xlsx-js-style
-#+end_src
-
-That didn't work. Try this one: https://www.npmjs.com/package/sheetjs-style
-
-#+begin_src shell
-~/bin/pnpm install sheetjs-style
-sed -i $'s/APOS = "\'";/APOS = "\'",/' node_modules/sheetjs-style/xlsx.js
-sed -i $'s/_hashIndex = {};/var _hashIndex = {};/' node_modules/sheetjs-style/xlsx.js
-
-#+end_src
-
-#+RESULTS:
-| Progress:              | resolved      | 1,     | reused | 0,                         | downloaded | 0,                  | added | 0   |      |         |        |
-| Packages:              | 22            |        |        |                            |            |                     |       |     |      |         |        |
-| ++++++++++++++++++++++ |               |        |        |                            |            |                     |       |     |      |         |        |
-| Packages               | are           | hard   | linked | from                       | the        | content-addressable | store | to  | the  | virtual | store. |
-| Content-addressable    | store         | is     | at:    | /home/drewc/.pnpm-store/v3 |            |                     |       |     |      |         |        |
-| Virtual                | store         | is     | at:    | node_modules/.pnpm         |            |                     |       |     |      |         |        |
-|                        |               |        |        |                            |            |                     |       |     |      |         |        |
-| dependencies:          |               |        |        |                            |            |                     |       |     |      |         |        |
-| +                      | npm           | 8.1.2  |        |                            |            |                     |       |     |      |         |        |
-| +                      | pnpm          | 6.20.1 |        |                            |            |                     |       |     |      |         |        |
-| +                      | sheetjs-style | 0.15.7 |        |                            |            |                     |       |     |      |         |        |
-| +                      | xlsx          | 0.17.3 |        |                            |            |                     |       |     |      |         |        |
-|                        |               |        |        |                            |            |                     |       |     |      |         |        |
-| Progress:              | resolved      | 22,    | reused | 22,                        | downloaded | 0,                  | added | 22, | done |         |        |
-
-* Usage

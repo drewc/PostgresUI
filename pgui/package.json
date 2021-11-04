@@ -16,6 +16,7 @@
     "pnpm": "^6.20.1",
     "sheetjs-style": "^0.15.7",
     "sheetjs-style-v2": "^0.15.6",
+    "uikit": "^3.8.0",
     "vue": "^3.2.21",
     "xlsx": "^0.17.3",
     "xlsx-js-style": "^1.0.0"

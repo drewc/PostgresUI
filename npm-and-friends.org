@@ -75,3 +75,9 @@ I've tried ~yarn~, ~npm~ and various cousins thereof. I try for monorepos. Now g
 #+begin_src shell
 ~/bin/npm install --global pnpm
 #+end_src
+
+Now in this repo install it/both as well.
+
+#+begin_src
+~/bin/npm install pnpm npm
+#+end_src

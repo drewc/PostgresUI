@@ -1,6 +1,6 @@
 <script setup>
 import { ref, getCurrentInstance } from 'vue'
-import pgAPI from './js/pgAPI'
+import pgAPI from '../assets/js/pgAPI'
 import PgLogin from './PgLogin.vue'
 import CodeMirror from './CodeMirror.vue'
 import globalCodeMirror from 'codemirror'
@@ -17,7 +17,7 @@ const self =  getCurrentInstance();
 var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
 
-// console.log('setup REPL!')
+console.log('setup REPL!', self, this)
 
 const servers = pgAPI.servers
 
@@ -28,6 +28,74 @@ let codemirror ;
 
 const error = ref();
 const results = ref([])
+
+let historyCount = 1
+
+function getPreviousHistory() {
+    const reses = results.value;
+    const his = reses[reses.length - historyCount];
+    console.log("History?", reses, his, reses.length, historyCount)
+    if (!!his && reses.length !== historyCount) {
+        historyCount = historyCount + 1
+    }
+    return his ? his.text : false;
+}
+
+function getNextHistory() {
+    if (historyCount === 1) {
+        return false
+    } else {
+        historyCount = historyCount - 1;
+        const reses = results.value;
+        const his = reses[reses.length - historyCount];
+       console.log("NextHistory?", reses, his, reses.length, historyCount)
+        return his ? his.text : false;
+    }
+}
+function addHistoryMap(cm, self=getCurrentInstance()) {
+    let firstValue = false;
+    const extraKeys = {
+        ...cm.options.extraKeys,
+        Up:  function (cm) {
+            if (cm.getCursor().line === 0) {
+                if (historyCount === 1) { firstValue = cm.getValue() }
+                const hist = getPreviousHistory();
+                if (hist) {
+                    cm.setValue(hist)
+                    cm.setCursor({ line: 0 })
+                } else {
+                    globalCodeMirror.Pass
+                }
+            } else {
+                return globalCodeMirror.Pass
+            }
+        },
+        Down: function (cm) {
+            if (cm.getCursor().line === 0) {
+                if (historyCount === 1) {
+                    if (typeof firstValue === "string") {
+                        cm.setValue(firstValue)
+                        firstValue = false;
+                    }
+                    return globalCodeMirror.Pass
+                } else {
+                    const hist = getNextHistory()
+                    if (hist) {
+                        cm.setValue(hist)
+                        cm.setCursor({ line: 0 })
+                    } else return  globalCodeMirror.Pass;
+                }
+            } else return globalCodeMirror.Pass;
+        }
+    }
+
+    console.log('Adding History Keys', extraKeys)
+    cm.setOption("extraKeys", extraKeys);
+
+}
+
+
+window.SQLHistory = results.value;
 
 
 function addEnterMap(cm, self=getCurrentInstance()) {
@@ -92,6 +160,9 @@ globalCodeMirror.prototype.prepareSQL =
     }
 
 
+window.CodeMirror = globalCodeMirror
+
+
 
 function queryCodeMirror(cm = codemirror, server = currentServer.value) {
    console.log('Querying:', cm.getValue);
@@ -106,6 +177,8 @@ function queryCodeMirror(cm = codemirror, server = currentServer.value) {
               Object.assign(stmt, rstmt)
               // console.log('add results of query', stmt)
               results.value.push(stmt)
+              cm.setValue("")
+              return stmt;
           })
 
       }
@@ -123,6 +196,7 @@ globalCodeMirror.prototype.prepareSQL = prepareCodeMirror;
 function codeMirrorInit(cm) {
   codemirror = cm;
   addEnterMap(cm);
+  addHistoryMap(cm);
   window.dbgCodeMirror = cm
   // console.log("New CodeMirror", cm)
 }
@@ -130,6 +204,7 @@ function codeMirrorInit(cm) {
 function innerWidth() { return window.innerWidth };
 
 function isMobile () { return innerWidth() <= 640 }
+
 
 
 // function onChange(cm, change) {
@@ -155,6 +230,7 @@ function isMobile () { return innerWidth() <= 640 }
   // JavaScript
 var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
+window.huh = import('../../pgui.conf.json')
 
 
 </script>
@@ -322,9 +398,10 @@ var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
 <style src="/src/assets/css/dashboard.css"> </style>
 <style>
-.clusterize-scroll {
-    max-height: 40vh;
+.sql-result .clusterize-scroll {
+    max-height: 45vh;
 }
+
 
 .sql-error {
     position:absolute;

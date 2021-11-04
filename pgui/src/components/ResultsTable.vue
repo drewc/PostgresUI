@@ -1,6 +1,7 @@
 <script setup>
 import XLSX from 'xlsx'
 import Clusterize from './Clusterize.vue'
+import { ref, getCurrentInstance } from 'vue'
 
 const props = defineProps({
     result: Object
@@ -50,6 +51,29 @@ function makeAndDownloadSheetBook(res = result.value, name = sheetname) {
 }
 
 
+const self =  getCurrentInstance();
+
+
+console.warn('Res!', self, self.refs.cluster)
+
+function showModal() {
+  const modal = self.refs.modal;
+  const dialog = self.refs.md;
+  const cluster = self.refs.cluster;
+
+  console.log("show modal", modal, cluster);
+  dialog.appendChild(cluster);
+  UIkit.modal(modal).show();
+
+  UIkit.util.on(modal, 'hide', () => { hideModal() })
+}
+
+function hideModal() {
+  const cluster = self.refs.cluster;
+  const result = self.refs.result;
+   result.appendChild(cluster);
+}
+
 </script>
 
 <template>
@@ -65,16 +89,31 @@ function makeAndDownloadSheetBook(res = result.value, name = sheetname) {
             @click="makeAndDownloadSheetBook(result, sheetname)">
             Download </button></li>
 
-        <li><a href="#">Item</a></li>
+        <li><a href="#" @click="showModal()">fullscreen</a></li>
         <li class="uk-nav-divider"></li>
         <li><a href="#">Item</a></li>
     </ul>
 </div>
+<div ref="result" class="sql-result">
+  <div ref="cluster">
 <Clusterize
   :headers="resultHeaders(result)"
   :cluster="resultRows(result)"
   :caption="resultQuery(result)"
   />
+</div>
+</div>
+<div
+  ref="modal" class="uk-modal-full sql-result-modal"
+  uk-modal>
+  <div class="uk-modal-dialog" ref="md" uk-height-viewport>
+  <button
+          class="uk-modal-close-full uk-close-large"
+          type="button" uk-close></button>
+  Here!!
+
+</div>
+</div>
 </div>
 </template>
 
@@ -86,11 +125,16 @@ function makeAndDownloadSheetBook(res = result.value, name = sheetname) {
      padding:0;
      position: relative;
      top: 0.9em;
-     right: 1.9em;
+     right: 2.5em;
      border: 1px solid white;
-     z-index: 1025;
+     z-index: 42;
   }
   .sql-menu-button:hover {
     opacity: 100
   }
+  
+ .sql-result-modal .clusterize-scroll{
+  max-height: 90vh;
+  overflow: auto;
+}
  </style>

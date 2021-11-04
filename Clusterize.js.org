@@ -107,6 +107,8 @@ We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the
   border: 1px solid #BBB;
 }
 
+
+
 .clusterize .uk-table {
    margin-bottom: 0.5em;
 }
