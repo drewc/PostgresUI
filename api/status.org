@@ -1,0 +1,44 @@
+#+TITLE: Status: Do we have this server still?
+
+
+#+begin_src js :tangle ../pgui/src/assets/js/api/status.js
+import { post } from "./axios"
+import { pgServer } from "./servers"
+
+export function server (srv) {
+    return post('status', srv).then(e => e.data);
+
+};
+
+pgServer.prototype.status = function () {
+    return server(this);
+}
+
+export default {
+    server
+}
+
+#+end_src
+
+#+begin_src scheme :tangle status.ss :noweb yes
+(export #t)
+(import :drewc/ftw :std/misc/uuid :std/sugar
+        :drewc/db/postgresql :drewc/db/dbi :std/error
+        :drewc/pgui/api/login)
+
+
+(define-json-endpoint status "/api/status")
+
+(def (status/POST)
+  (def jso (http-request-body-json*))
+  (def uuid (hash-get jso 'uuid))
+  (try
+   (let (connected (db<-uuid uuid))
+     (respond/JSON (list->hash-table`((connected . ,(not (not connected)))))))
+   (catch (e) (respond/JSON code: 401
+                            (list->hash-table
+                             `((error . ,(with-output-to-string
+                                           ""
+                                           (cut ##display-exception e)))))))))
+
+#+end_src
