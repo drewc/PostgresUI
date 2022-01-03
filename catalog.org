@@ -1,0 +1,53 @@
+:PROPERTIES:
+:ID:       f862ef90-8c28-40b0-ac23-e693fddfa9f4
+:END:
+#+TITLE: Catalog, AKA how the db output is transformed
+
+
+* "simple" catalog
+
+A lot of the time we simply want a string or number input/output and not our wonderful gerbil objects.
+
+#+begin_src scheme :noweb-ref simple-catalog
+(extern namespace: "drewc/db/postgresql"
+  serialize-boolean deserialize-boolean
+  identity-string)
+
+(defcatalog simple-catalog
+  ;; BOOLOID
+  ((16) serialize-boolean deserialize-boolean)
+  ;; INT8OID INT2OID INT4OID FLOAT4OID FLOAT8OID NUMERICOID
+  ((20 21 23 700 701 1700) number->string string->number)
+  ;; CHAROID TEXTOID BPCHAROID VARCHAROID
+  ((18 25 1042 1043) identity-string identity))
+#+end_src
+
+That way we can put on passing data to the browser.
+
+#+begin_src scheme
+(parameterize ((current-catalog simple-catalog))
+  (sql-eval-query (db<-uuid db-uuid) "SELECT now(), 1, '42', false"))
+
+;; => (#("2021-10-25 20:54:35.377459+00" 1 "42", #f))
+#+end_src
+
+
+* /File/ ~catalog.ss~
+:PROPERTIES:
+:ID:       d7b92dcb-18f0-4df6-8b96-e7a417d2dd2d
+:END:
+#+begin_src scheme :tangle catalog.ss :noweb yes
+(export #t)
+(import :drewc/db/postgresql  :drewc/db/postgresql-driver
+        :drewc/db/dbi :std/text/json)
+
+<<simple-catalog>>
+
+(def (serialize-json gerbil-json)
+ (call-with-output-string "" (cut write-json gerbil-json <>)))
+
+(def (deserialize-json str)
+  (call-with-input-string str read-json))
+
+(defcatalog-default ((114 3802) serialize-json deserialize-json))
+#+end_src

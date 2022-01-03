@@ -1,0 +1,32 @@
+{
+  "name": "pgui",
+  "version": "0.0.0",
+  "scripts": {
+    "pnpm": "pnpm",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "vite preview"
+  },
+  "dependencies": {
+    "axios": "0.24.0",
+    "clusterize.js": "^0.18.1",
+    "codemirror": "^5.63.3",
+    "idb": "^6.1.5",
+    "npm": "^8.1.2",
+    "pnpm": "^6.20.1",
+    "sheetjs-style": "^0.15.7",
+    "sheetjs-style-v2": "^0.15.6",
+    "uikit": "^3.8.0",
+    "vue": "^3.2.21",
+    "vue-router": "4",
+    "vuex": "^4.0.2",
+    "xlsx": "^0.17.3",
+    "xlsx-js-style": "^1.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^1.9.4",
+    "@vue/compiler-sfc": "^3.2.21",
+    "vite": "^2.6.13"
+  }
+}

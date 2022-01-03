@@ -1,0 +1,11 @@
+#+TITLE: Axios: AJ(SON)AX.
+
+* Installation
+
+#+begin_src shell
+~/bin/pnpm add axios@0.24.0
+#+end_src
+
+* Usage
+
+We have our own api [[file:api/axios.org][axios.org]].

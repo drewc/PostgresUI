@@ -1,0 +1,100 @@
+#+TITLE: Login API: Client and server.
+
+To make the client global there's a ~window.pgAPI~.
+
+* Client
+:PROPERTIES:
+:ID:       27a4619b-e979-4b25-b154-6fff38826791
+:END:
+
+#+begin_src js :tangle ../pgui/src/assets/js/login.js
+import { get } from 'axios'
+import { api, pgAPI, post } from "./pgAPI"
+import { ref } from 'vue'
+
+
+export function pgLogin (host, port,username, passwd = false, db = username) {
+    let loginData = {
+        host: host,
+        port: port,
+        user: username,
+        passwd: passwd,
+        db: db
+    };
+    console.log('Trying pgLogin', loginData)
+    return post('pgLogin', loginData)
+        .then(res => {
+            console.warn("Login Success?", res)
+            delete loginData.passwd;
+            loginData.uuid = res.data.uuid;
+            api.setServersHistoryItem(loginData)
+            api.servers.push(loginData);
+            return loginData;
+        })
+        .catch(e => {
+            if (e.response && e.response.data) {
+                console.log('pgLogin error: ', e.response.data.error) ;
+                return e.response.data
+            }  else { throw(e) }
+        })
+};
+
+pgAPI.pgLogin = pgLogin;
+
+export default {
+    api, pgLogin
+}
+
+#+end_src
+
+* Server
+
+~/api/pgLogin~ endpoint
+
+#+begin_src scheme :noweb-ref pgLogin-endpoint
+(define-json-endpoint pgLogin "/api/pgLogin")
+
+(def (pgLogin/POST)
+  (def jso (http-request-body-json*))
+  (def s (hash-get jso 'host))
+  (def po (hash-get jso 'port))
+  (def u (hash-get jso 'user))
+  (def p (hash-get jso 'passwd))
+  (def d (hash-get jso 'db))
+  (try
+   (let ((uuid (pgui-sql-connect host: s user: u passwd: p db: d)))
+     (respond/JSON (list->hash-table`((uuid . ,uuid)))))
+   (catch (e) (respond/JSON code: 401
+                            (list->hash-table
+                             `((error . ,(with-output-to-string
+                                           ""
+                                           (cut ##display-exception e (current-output-port))))))))))
+#+end_src
+
+** /File/ ~/api/login.ss~
+:PROPERTIES:
+:ID:       a2f12654-f585-401d-b25c-4c55451d6e93
+:END:
+
+#+begin_src scheme :tangle login.ss :noweb yes
+(export #t)
+(import :drewc/ftw :std/misc/uuid :std/sugar
+        :drewc/db/postgresql :drewc/db/dbi :std/error)
+
+(def default-connection-table (make-hash-table))
+(def current-connection-table (make-parameter default-connection-table))
+
+(begin
+  (def (db<-uuid uuid)
+    (hash-get (current-connection-table) uuid))
+       
+  (def uuid->db db<-uuid))
+
+(def (pgui-sql-connect . args)
+  (def uuid (uuid->string (random-uuid)))
+  (def db (apply sql-connect postgresql-connect args))
+  (hash-put! (current-connection-table) uuid db)
+  uuid)
+
+<<pgLogin-endpoint>>
+#+end_src

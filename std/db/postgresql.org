@@ -1,0 +1,77 @@
+#+TITLE: Some extra Postgresql defaults
+
+
+* Adding vectors to Gerbil's ~:std/db/postgresql~
+:PROPERTIES:
+:ID:       aa7f775c-4d16-4dbe-90a5-63a26efa0f6c
+:END:
+
+Basically we want to to do ~WHERE id = ANY ($1)~ from Gerbil. Gerbil does not (yet) have that type.
+
+#+begin_src scheme
+(def stmt (sql-prepare db "SELECT 1 = ANY ($1)"))
+(sql-bind stmt #(42 0 1))
+; Evaluation aborted on Cannot bind; unknown parameter type 1007 #(42 0 1)
+#+end_src
+
+What is type ~1007~? It's an array of ~int4~'s apparently.
+
+#+begin_src scheme
+(def (sql-typdesc (num 1007))
+  (sql-eval-query
+   db "SELECT to_json(t) FROM (SELECT typname, typelem, typarray
+         FROM pg_catalog.pg_type t WHERE oid::int = $1) t" num))
+
+(sql-typdesc 1007)
+("{\"typname\":\"_int4\",\"typelem\":\"23\",\"typarray\":\"0\"}")
+
+(sql-typdesc 23)
+("{\"typname\":\"int4\",\"typelem\":\"0\",\"typarray\":\"1007\"}")
+
+;(std/db/postgresql#postgresql-statement-cols stmt)
+#+end_src
+
+Let's build some de/serializers and see if it works.
+
+#+begin_src scheme :tangle postgresql/vectors.ss
+(import :std/db/postgresql :std/db/dbi)
+
+(def (serialize-num-array vec)
+  (def lst (if (vector? vec) (vector->list vec) vec))
+  (if (string? vec)
+    vec
+    (with-output-to-string "{"(lambda ()
+                                     (when (not (null? lst))
+                                       (display (car lst))
+                                       (for-each (lambda (a) (display ",") (display a))
+                                                 (cdr lst)))
+                                     (display "}")))))
+(def (deserialize-num-array str)
+  (def (read-items)
+    (def char (peek-char))
+    (when (char=? char #\,) (read-char))
+    (if (char=? char #\}) []
+        (cons (read) (read-items))))
+  (with-input-from-string str
+    (lambda ()
+      (let ((start (read-char)))
+        (if (not (equal? start #\{))
+          (error "Cannot deserialize array from ~A" str)
+          (list->vector (read-items)))))))
+
+(defcatalog-default ((1007) serialize-num-array deserialize-num-array))
+#+end_src
+
+
+And try it out.
+
+#+begin_src scheme
+(def stmt (sql-prepare db "SELECT 1 = ANY ($1)"))
+;; => #!void
+(sql-bind stmt #(42 0 1))
+;; => #!void
+(sql-query stmt)
+;; => (#t)
+(begin (sql-bind stmt #(42 0 4)) (sql-query stmt))
+;; => (#f)
+#+end_src

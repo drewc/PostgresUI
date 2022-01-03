@@ -1,0 +1,364 @@
+#+TITLE: Clusterize Js
+
+We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the rescue.
+
+* View an SQL result
+
+#+begin_src vue :tangle "./pgui/src/components/ClusterizeResult.vue"
+<script setup>
+import Clusterize from './Clusterize.vue'
+const props = defineProps({
+    result: Object,
+    caption: String
+})
+
+</script>
+<template>
+<Clusterize
+ :headers="result.columnHeaders()"
+ :cluster="result.resultRows()"
+ :caption="caption" />
+</template>
+#+end_src
+
+* Vue SFC
+:PROPERTIES:
+:ID:       67eabc15-850a-49a2-b754-8a4acbc1f182
+:END:
+
+#+begin_src vue :tangle "./pgui/src/components/Clusterize.vue"
+<script setup>
+  //import  { Clusterize } from '../../../clusterize-es6/dist/clusterize.es.js'
+  import  Clusterize  from 'clusterize.js'
+  // import foo from '/src/clusterize/clusterize.cjs'
+  import { onMounted, onUpdated, getCurrentInstance, ref } from 'vue'
+
+  // const Clusterize = window.Clusterize;
+
+  const self =  getCurrentInstance();
+
+  const props = defineProps({
+    headers: Array,
+    cluster: Array,
+    caption: String
+  })
+
+  // console.log("Setup", props.headers, props.cluster)
+
+  let clusterObject ;
+
+  function makeTR(row) {
+    let tr = '<tr>'
+    if (Array.isArray(row)) {
+     for (var col in row) {
+        tr = tr + '<td class="uk-table-shrink">' + row[col] + '</td>'
+     }
+    } else {
+
+      tr = tr + '<td class="uk-table-shrink">' + row + '</td>'
+
+    }
+
+    // console.warn("new row!", tr)
+
+    return tr + '</tr>'
+  }
+
+  const rows = ref();
+
+  function rowCount() {
+     rows.value = clusterObject ? clusterObject.getRowsAmount() : null;
+    }
+
+  onUpdated(() => {
+     // console.log('updated!', props.headers, props.cluster, clusterObject)
+     clusterObject.update(props.cluster.map(makeTR))
+    rowCount();
+  })
+
+ onMounted(() => {
+  const sa = self.refs.scrollArea, ca = self.refs.contentArea;
+
+  // console.log("New Cluster", props.cluster, props.headers)
+
+   clusterObject =  new Clusterize({
+   rows: props.cluster.map(makeTR),
+   scrollElem: sa,
+   contentElem: ca
+ });
+  rowCount();
+  // console.warn('Cluster Mounted!', self, sa, ca)
+
+})
+
+</script>
+<template>
+<div class="clusterize-panel">
+<div class="clusterize">
+  <div ref="scrollArea" class="clusterize-scroll">
+  <table class="uk-table uk-table-small uk-table-divider ">
+      <caption v-if="caption"> <code> {{ caption }} </code> </caption>
+      <thead> <tr> <th v-for="h in headers" key="h"> {{ h }} </th> </tr> </thead>
+      <tbody ref="contentArea" class="clusterize-content">
+        <tr class="clusterize-no-data">
+          <td>Loading data…</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <span class="label alert radius rows-amount-helper uk-text-success">Rows: {{ rows }}</span>
+ </div>
+
+
+
+</div>
+</template>
+
+<style src="clusterize.js/clusterize.css"></style>
+<style>
+.clusterize-panel {
+  position: relative;
+  margin-top: 0.5em;
+  border-radius: 0.3em;
+  padding:0.3em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  border: 1px solid #BBB;
+}
+
+
+
+.clusterize .uk-table {
+   margin-bottom: 0.5em;
+}
+.clusterize .uk-table th {
+    padding: 1em 0.5em;
+    color: #333;
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0em;
+    border-left: 1px solid #eee;
+    border-bottom: 1px solid #ddd;
+    font-size: 13px;
+    text-align: center;
+    z-index: 6;
+    background: #fff;
+}
+
+.clusterize .uk-table td {
+  z-index: 10
+}
+
+.clusterize .uk-table caption {
+ max-height: 3em;
+ overflow: auto;
+ margin-bottom: 0.5em;
+ background: #fff;
+ border-radius: 0.3em;
+ padding:0.3em;
+ position: -webkit-sticky; /* Safari */
+  position: sticky;
+  top: 0;
+    z-index: 5;
+    color: #878686;
+      opacity: 0.8;
+    position: -webkit-sticky;
+    position: sticky;
+ }
+.clusterize code {
+ white-space: pre-wrap;
+ background: #fff;
+ padding: 0.5em;
+}
+
+
+.rows-amount-helper {
+    position: absolute;
+    bottom: -0.75em;
+    right: 28px;
+    z-index: 7;
+    color:black;
+    border-radius: 3px;
+    background: #fff;
+ padding:0.3em;
+}
+ </style>
+
+
+#+end_src
+
+
+* Options
+ :PROPERTIES:
+ :CUSTOM_ID: options
+ :END:
+
+** ~row~ Required: *It depends*
+ If you render rows by yourself - pass array of tags in String. This way is preferable.
+
+*Example:* ['<tr><td>First</td></tr>', '<tr><td>Second</td></tr>'];
+
+If you need to use existing markup - *do not specify* this option at all.                                                                                                                                                                                                                                                                           |
+** ~scrollId or scrollElem~ Required: *Yes*
+
+Id or DOM node of parent tag which used as scroll area.
+
+*Example: scrollId: 'scrollArea' or scrollElem:
+document.getElementById('scrollArea')*
+
+** ~contentId or contentElem~ Required : *Yes*
+
+Id or DOM node of tag where content will be placed.
+
+*Example: contentId: 'contentArea' or contentElem:
+ document.getElementById('contentArea')*
+
+| tag                                                                                    | Optional   | Tag name for supporting elements: spacing extra rows, empty-data row. It will be determined by itself once data provided, so it's optional. But if your data is not provided during initialization - it is better to specify this option because otherwise plugin will be unable to correctly render empty-data row. *Example: 'tr'. Default: null* |
+| rows_in_block                                                                          | Optional   | Amount of rows in block. Increase means browser will be more loaded, decrease means browser will have to update clusters more often. [[#playground][This example]] would help to understand this property easier. Good practice will be to keep rows_in_block as amount of visible rows in your list. Must be even to keep parity. *Default: 50*                     |
+| blocks_in_cluster                                                                      | Optional   | Amount of blocks in cluster. When scroll reaches last block - content replaces with next cluster. *Default: 4*                                                                                                                                                                                                                                      |
+| show_no_data_row                                                                       | Optional   | Specifies whether to display an "empty" placeholder row if there is no data provided. *Default: true*                                                                                                                                                                                                                                               |
+| no_data_text                                                                           | Optional   | Text for placeholder element if there is no data provided. *Default: 'No data'*                                                                                                                                                                                                                                                                     |
+| no_data_class                                                                          | Optional   | Class for placeholder element if there is no data provided. *Default: 'clusterize-no-data'*                                                                                                                                                                                                                                                         |
+| keep_parity                                                                            | Optional   | Add extra tag to keep parity of rows. Useful when used :nth-child(even/odd). *Default: true*                                                                                                                                                                                                                                                        |
+
+<<methods>>
+* Methods
+      :PROPERTIES:
+      :CUSTOM_ID: methods
+      :END:
+
+| Name                   | Parameter   | Description                                                                                                                                                                                                                                                                                                                                                        |
+|------------------------+-------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| .update()              | *Array*     | Updates list with new data                                                                                                                                                                                                                                                                                                                                         |
+| .append()              | *Array*     | Appends new data to the list                                                                                                                                                                                                                                                                                                                                       |
+| .prepend()             | *Array*     | Prepends new data to the list                                                                                                                                                                                                                                                                                                                                      |
+| .refresh()             | *Bool*      | Refreshes row height. Clusterize must always know current row height. It watches for window resize by itself but the width of the container may be changed programmatically, for example by dynamic neighboring elements, which could lead to a change in the height of rows. In such cases, you must call .refresh () to force Clusterize get new row height.\\   |
+
+|                      |        | Optional parameter (true) may be passed to force update Clusterize's processing, even if row height hasn't been changed. See [[https://github.com/NeXTs/Clusterize.js/issues/85#issuecomment-252088463][#85]] to get idea when it needed. |
+| .getRowsAmount()     |        | Returns total amount of rows                                                                                                                                 |
+| .getScrollProgress() |        | Returns current scroll progress                                                                                                                              |
+| .clear()             |        | Clears the list                                                                                                                                              |
+| .destroy()           | *Bool* | Destroys clusterize instance. Parameter: true - removes all data from the list, not specify or false - inserts all hidden data to the list                   |
+
+<<callbacks>>
+* Callbacks
+      :PROPERTIES:
+      :CUSTOM_ID: callbacks
+      :END:
+
+| Name                | Description                                                            |
+|---------------------+------------------------------------------------------------------------|
+| clusterWillChange   | Will be called right before replacing previous cluster with new one.   |
+| clusterChanged      | Will be called right after replacing previous cluster with new one.    |
+| scrollingProgress   | Will be called on scrolling. Returns progress position.                |
+
+#+BEGIN_EXAMPLE
+  // Callbacks usage example
+  var clusterize = new Clusterize({
+    …
+    callbacks: {
+      clusterWillChange: function() {},
+      clusterChanged: function() {},
+      scrollingProgress: function(progress) {}
+    }
+  });
+#+END_EXAMPLE
+
+<<playground>>
+* Manual Install Attempt
+
+This does not seem to work quite properly.
+
+#+begin_src shell
+cd /tmp/ ; cd $(mktemp -d) ;
+git clone https://github.com/NeXTs/Clusterize.js clusterize
+
+cd clusterize
+rm -rf .git/ bower.json package.json
+
+cd .. ; mv clusterize/ ~/me/src/PostgresUI/
+
+
+#+end_src
+
+#+RESULTS:
+
+So let's try the NPM package (which I do not like). This is because vite will
+import/transpile from node_modules by default. Must be a way around it.
+
+#+begin_src shell
+npm install clusterize.js
+#+end_src
+
+Ah! We can make our own library in this monorepo.
+
+https://vitejs.dev/guide/build.html#library-mode
+
+#+begin_src js :tangle clusterize-es6/vite.config.js
+// vite.config.js
+const path = require('path')
+const { defineConfig } = require('vite')
+
+module.exports = defineConfig({
+  build: {
+    lib: {
+      entry: path.resolve(__dirname, 'lib/main.js'),
+      name: 'Clusterize',
+      fileName: (format) => `clusterize.${format}.js`
+    }
+  }
+})
+
+#+end_src
+
+#+begin_src shell
+npm init vite@latest clusterize-es6
+cd clusterize-es6
+npm install
+npm install clusterize.js
+mkdir lib
+cd ../pgui/node_modules/
+ln -s ../../clusterize-es6 .
+#+end_src
+
+#+begin_src js :tangle "clusterize-es6/lib/main.js"
+import { Clusterize as clstr } from 'clusterize.js'
+
+export const Clusterize = clstr;
+
+#+end_src
+
+#+begin_src js :tangle "clusterize-es6/package.json"
+{
+  "name": "clusterize-es6",
+  "version": "0.0.0",
+  "files": ["dist"],
+  "main": "./dist/clusterize.umd.js",
+  "module": "./dist/clusterize.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/clusterize.es.js",
+      "require": "./dist/clusterize.umd.js"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^2.6.4",
+    "clusterize.js": "^0.18.1"
+  }
+
+}
+#+end_src
+#+RESULTS:
+
+* Org Docs
+
+#+begin_src shell
+cd /tmp/ ; cd $(mktemp -d) ;
+wget https://clusterize.js.org/
+
+#+end_src

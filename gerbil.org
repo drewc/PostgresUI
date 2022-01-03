@@ -1,0 +1,32 @@
+#+TITLE: Gerbil: Packages and Build Scripts
+
+#+begin_src gerbil :tangle gerbil.pkg
+(package: drewc/pgui)
+#+end_src
+
+#+begin_src gerbil :tangle build.ss :shebang #!/usr/bin/env gxi
+(import :std/build-script)
+
+(defbuild-script
+  '("conf" "catalog" "server/httpd" "api/login" "api/status"
+    "api/simple-query" "api/prepare" "api/query" "api/report"))
+#+end_src
+
+* Dev gerbil script
+:PROPERTIES:
+:ID:       0d700c70-d8d5-448c-9370-0ee0a65a18f3
+:END:
+
+#+begin_src shell :tangle ./bin/pgui-dev :shebang #!/usr/bin/env bash
+DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+cd "$DIR/../"
+gxi -e "(import :drewc/gerbil-swank :gerbil/gambit/threads)" \
+    -e "(spawn start-swank 4205)" -e '(import :drewc/pgui/server/httpd)'\
+    -e '(import :drewc/pgui/api/login)'\
+    -e '(import :drewc/pgui/api/prepare)'\
+    -e '(import :drewc/pgui/api/query)'\
+    -e '(import :drewc/pgui/api/simple-query)'\
+    -e '(import :drewc/pgui/api/status)'\
+    -e '(import :drewc/pgui/api/report)'\
+    -e "(ensure-pgui-ftw-server!)" -
+#+end_src

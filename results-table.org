@@ -1,0 +1,167 @@
+#+TITLE: Results Table
+
+Almost everything returned from the PostgreSQL server is a table of rows.
+
+We clusterize. We XLSX'ise. We store history. This is where it all comes together.
+
+* Menu Dropdown
+:PROPERTIES:
+:ID:       d5be68a3-0fac-4263-a88d-bd857adf5c9e
+:END:
+
+#+begin_src html :noweb-ref menudrop
+<button class="uk-button uk-button-default sql-menu-button" type="button">
+  <span uk-icon="table"></span>
+</button>
+<div uk-dropdown>
+  <ul class="uk-nav uk-dropdown-nav">
+    <!-- <li class="uk-nav-header">Spreadsheet</li> -->
+    <!-- <li>Name: <input v-model="sheetname" /> </li> -->
+    <!-- <li> -->
+    <!--   <button type="button" -->
+    <!--     @click="makeAndDownloadSheetBook(result, sheetname)"> -->
+    <!--     Download -->
+    <!--   </button> -->
+    <!-- </li> -->
+
+    <!-- <li class="uk-nav-header">Report</li> -->
+    <!-- <li> -->
+    <!--   <router-link -->
+    <!--     :to="{ name: 'save-new-report', params: { query: result.text }}" -->
+    <!--     >Save as Report</router-link> -->
+    <!-- </li> -->
+    <li><a href="#" @click="showModal()">fullscreen</a></li>
+    <!-- <li class="uk-nav-divider"></li> -->
+    <!-- <li><a href="#">Item</a></li> -->
+  </ul>
+</div>
+
+#+end_src
+* /File/ ~pgui/src/components/ResultsTable.vue~
+
+#+begin_src vue :tangle pgui/src/components/ResultsTable.vue :noweb yes
+<script setup>
+import XLSX from 'xlsx'
+import Clusterize from './Clusterize.vue'
+import { ref, getCurrentInstance } from 'vue'
+
+const props = defineProps({
+    result: Object
+})
+
+function resultHeaders(res = props.result) {
+    return res.columns ? res.columns.map(c => c[0]) : []
+}
+
+console.log("result", props.result);
+
+function resultRows(res = props.result) {
+    return res.rows.map(a => Array.isArray(a) ? a : [a])
+}
+
+function resultQuery(res = props.result) { return res.text }
+
+var sheetname = 'Database-Report'
+
+function makeSheetBook(res = props.result, name = sheetname) {
+ const wb = XLSX.utils.book_new();
+
+ const ws = XLSX.utils.aoa_to_sheet([
+     resultHeaders(res),
+     ...resultRows(res)
+  ]);
+
+    XLSX.utils.book_append_sheet(wb, ws, name);
+
+
+    window.foo = wb;
+
+    return wb;
+
+}
+
+
+
+
+
+function makeAndDownloadSheetBook(res = result.value, name = sheetname) {
+
+     const book = makeSheetBook(res, name)
+
+     XLSX.writeFile(book, name + ".xlsb", {compression:true});
+
+}
+
+
+const self =  getCurrentInstance();
+
+
+console.warn('Res!', self, self.refs.cluster)
+
+function showModal() {
+  const modal = self.refs.modal;
+  const dialog = self.refs.md;
+  const cluster = self.refs.cluster;
+
+  console.log("show modal", modal, cluster);
+  dialog.appendChild(cluster);
+  UIkit.modal(modal).show();
+
+  UIkit.util.on(modal, 'hide', () => { hideModal() })
+}
+
+function hideModal() {
+  const cluster = self.refs.cluster;
+  const result = self.refs.result;
+   result.appendChild(cluster);
+}
+
+</script>
+
+<template>
+<div>
+  <<menudrop>>
+ <div ref="result" class="sql-result">
+    <div ref="cluster">
+      <Clusterize
+        :headers="resultHeaders(result)"
+        :cluster="resultRows(result)"
+        />
+    </div>
+  </div>
+  <div
+    ref="modal" class="uk-modal-full sql-result-modal"
+    uk-modal>
+    <div class="uk-modal-dialog" ref="md" uk-height-viewport>
+      <button
+        class="uk-modal-close-full uk-close-large"
+        type="button" uk-close></button>
+      Here!!
+
+    </div>
+  </div>
+</div>
+</template>
+
+<style>
+  .sql-menu-button {
+    float: right;
+     opacity:50%;
+     line-height: 0;
+     padding:0;
+     position: relative;
+     top: 0.9em;
+     right: 2.5em;
+     border: 1px solid white;
+     z-index: 42;
+  }
+  .sql-menu-button:hover {
+    opacity: 100
+  }
+
+.sql-result-modal .clusterize-scroll{
+  max-height: 90vh;
+  overflow: auto;
+}
+ </style>
+#+end_src

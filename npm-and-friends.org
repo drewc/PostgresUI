@@ -1,0 +1,102 @@
+#+TITLE: Npm And Friends: node_modules, reproducible and repo-able.
+
+* ~pgui/package.json~, so we package the package
+
+#+INCLUDE: "pgui/package.json" src json
+
+* Global "prefix".
+
+We are using GuixSD, but this should work for others as well. From here:
+https://gist.github.com/bit4bit/899fd0f6336b569e925e43eabf3d1ec9
+
+
+#+begin_src shell
+mkdir -p ~/me/src/vnode/
+npm config set prefix ~/me/src/vnode/
+#+end_src
+
+Now, install yourself ~npm~!
+
+#+begin_src shell
+npm install npm --global
+#+end_src
+
+We'll put a script to patch shebangs in ~./vnode/lib/node_modules/.hooks/preinstall~
+
+#+begin_src shell :tangle ~/me/src/vnode/lib/node_modules/.hooks/preinstall :mkdirp t :shebang #!/run/current-system/profile/bin/bash
+pkg_path=$PWD
+
+function patch_shebang() {
+ file=$1
+ python_bin=`type -p python`
+ python_bin=`type -p ruby`
+ env_bin=`type -p env`
+ bash_bin=`type -p bash`
+
+ if [ -n "$env_bin" ]; then
+    sed -i -uE "s|^#!.+/env|#!${env_bin}|" $file
+ elif [ -n "$bash_bin" ]; then
+    sed -i -uE "s|^#!.+/bash|#!${bash_bin}|" $file
+ elif [ -n "$python_bin" ]; then
+    sed -i -uE "s|^#!.+/bash|#!${python_bin}|" $file
+ elif [ -n "$ruby_bin" ]; then
+    sed -i -uE "s|^#!.+/bash|#!${ruby_bin}|" $file
+ fi
+}
+
+files=`find $pkg_path -type f -exec grep -lE '^#!(.+ )' {} \;`
+for file in $files; do
+ patch_shebang $file
+done
+#+end_src
+
+Chmod and re-install.
+
+#+begin_src shell
+chmod a+rx ~/me/src/vnode/lib/node_modules/.hooks/preinstall
+npm install npm --global
+#+end_src
+
+Works!
+
+* Add global execs to ~~/bin/~
+
+I have a ~~/bin~ directory that I use. This gets me out of ~$PATH~ for a lot of things.
+
+#+begin_src shell
+ln -s ~/me/src/vnode/bin/* ~/bin
+#+end_src
+
+* Fast, disk space efficient package manager: ~pnpm~!
+
+I've tried ~yarn~, ~npm~ and various cousins thereof. I try for monorepos. Now going to try ~pnpm~ as it keeps popping up.
+
+#+begin_src shell
+~/bin/npm install --global pnpm
+~/bin/pnpm config set global-bin-dir $(~/bin/npm bin -g)
+
+#+end_src
+
+Now in this repo install it/both as well.
+
+#+begin_src
+~/bin/npm install pnpm npm
+#+end_src
+
+** Updating
+
+#+begin_src shell
+~/bin/pnpm install --global pnpm
+# Nothing to stop. No server is running for the store at /home/drewc/.pnpm-store/v3
+# Packages: +1
+# +
+# Packages are hard linked from the content-addressable store to the virtual store.
+#   Content-addressable store is at: /home/drewc/.pnpm-store/v3
+#   Virtual store is at:             node_modules/.pnpm
+
+# /home/drewc/me/src/vnode/pnpm-global/5:
+# + pnpm 6.22.2
+
+# Progress: resolved 1, reused 0, downloaded 1, added 1, done
+
+#+end_src

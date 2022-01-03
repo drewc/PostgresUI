@@ -1,0 +1,54 @@
+#+TITLE: Vuejs: Make things simple
+
+The UI is browser based. We want to keep things as simple as possible.
+https://v3.vuejs.org/ is what I chose.
+
+* Installation
+
+https://v3.vuejs.org/guide/installation.html#download-and-self-host
+
+#+begin_src shell
+~/bin/pnpm install vue@next
+
+~/bin/pnpm install -D @vue/compiler-sfc
+#+end_src
+
+* /File/ ~main.js~, the main entry point.
+
+If one wanted to start from top down, ~main.js~ would be a decent place for a
+developer.
+
+#+begin_src js :tangle pgui/src/main.js
+import { createApp } from 'vue'
+import App from './App.vue'
+
+import router from './routes.js'
+
+// Giv'r!
+const app = createApp(App);
+
+app.use(router)
+
+app.mount('#app')
+
+
+#+end_src
+
+* Vue V3 and emacs highlight
+
+#+begin_src emacs-lisp
+(defconst vue--front-tag-regex
+  (concat "<%s"                        ; The tag name
+          "\\(?:"                      ; Zero of more of...
+          "\\(?:\\s-+" vue--not-lang-key "[\"'][^\"']*?[\"']\\)" ; Any optional key-value pairs like type="foo/bar".
+          ;; ^ Disallow "lang" in k/v pairs to avoid matching regions with non-default languages
+          "\\|\\(?:\\s-+setup\\)"      ; The optional "setup" attribute
+          "\\|\\(?:\\s-+module\\)"      ; The optional "module" attribute
+          "\\)*"
+          "\\s-*>\n")                     ; The end of the tag
+  "A regular expression for the starting tags of template areas.
+To be formatted with the tag name.")
+
+(setq vue-initialized nil)
+
+#+end_src

@@ -1,0 +1,54 @@
+#+TITLE: Vitejs: A JS builder
+
+"We recommend starting new projects with Vite as it offers significantly better
+development experience in terms of dev server startup and HMR update performance
+" -- https://v3.vuejs.org/api/sfc-tooling.html#vite
+
+Ok! I like vuejs for SOC and want an easy way to use the SFC and have decided on
+this for now.
+
+#+begin_src shell
+npm --version # => 6.14.11
+
+npm init vite@latest pgui --template vue
+cd pgui
+npm install
+npm run dev
+#+end_src
+
+* PWA builds?
+
+#+begin_src shell
+npm i vite-plugin-pwa -D 
+#+end_src
+
+* Proxy for dev time
+:PROPERTIES:
+:ID:       512298f2-e325-43c1-b909-30f767b7515f
+:END:
+
+When running vite from the command line, Vite will automatically try to resolve a config file named vite.config.js inside project root.
+ -- https://vitejs.dev/config/#config-file-resolving
+
+ Over at [[file:server/ftw.org][httpd]] We by default use port 8389.
+
+#+begin_src js :tangle pgui/vite.config.js
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+
+
+// https://vitejs.dev/config/
+export default defineConfig({
+    plugins: [vue()],
+    server: {
+        proxy: {
+            // string shorthand
+            '/api': 'http://localhost:8389'
+        }
+    },
+    optimizeDeps: { exclude: ["vue-router"] }
+})
+
+#+end_src
+
+* 
