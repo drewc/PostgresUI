@@ -1,0 +1,183 @@
+#+TITLE: Simple Query: Complex interaction(s)!
+
+#+begin_quote
+A simple query cycle is initiated by the frontend sending a Query message to the
+backend. The message includes an SQL command (or commands) expressed as a text
+string. The backend then sends one or more response messages depending on the
+contents of the query command string, and finally a ReadyForQuery response
+message.
+--https://www.postgresql.org/docs/current/protocol-flow.html#id-1.10.5.7.4
+#+end_quote
+
+
+Because we want to create a shell similar in scope to psql as a component of
+~pgui~, the ability to execute many commands in one string is a big plus.
+
+
+* Structs
+
+In *Javascript* I consider these objects "structs". Makes me ol' head deal with
+it easier, for reference sake.
+
+#+begin_src js :tangle ./pgui/src/assets/js/api/simple-query.js :noweb yes
+import { post } from './axios'
+import XLSX from 'xlsx'
+
+export function SQLCommand(cmd) {
+    Object.assign(this, { type: "command", complete: false }, cmd)
+}
+
+
+export function SQLStatement(stmt) {
+    Object.assign(this, { type: "statement", complete: false }, stmt)
+}
+
+SQLStatement.prototype = Object.create(SQLCommand.prototype);
+SQLStatement.prototype.constructor = SQLStatement;
+
+export function SQLQuery(str) {
+    SQLCommand.call(this, { string: str, type: "query" })
+}
+
+SQLQuery.prototype = Object.create(SQLCommand.prototype);
+SQLQuery.prototype.constructor = SQLQuery ;
+
+SQLQuery.prototype.run = function(server) {
+    this.server = server;
+    const self = this;
+    return post('simple-query', this)
+        .then(res => {
+            const data = res.data
+            self.complete = data.results.map(r => r.complete)
+            this.results = data.results.map(r => {
+                if (r.type === 'statement') {
+                    return new SQLStatement(r)
+                } else return new SQLCommand(r)
+            })
+            this.notices = data.notices
+            console.log('simple query run:', data)
+            return data;
+        })
+}
+
+<<SQLQuery Spreadsheet>>
+#+end_src
+
+* Create Spreadsheet
+
+The end-users usually do not wish a webpage to be the final result. In fact, spreadsheets are often used.
+
+We use [[file:SheetJS.org::#sheetjs][SheetJS]] which makes things quite simple in the end. A Query is a workbook that contains sheets.
+
+#+begin_src javascript :noweb-ref SQLQuery Spreadsheet
+SQLCommand.prototype.sheetHeaders = function() { return [] };
+SQLCommand.prototype.sheetRows = function() { return [] };
+SQLCommand.prototype.sheetName = false;
+SQLCommand.prototype.makeSpreadSheet = function() { return false };
+SQLCommand.prototype.isSpreadSheet = false;
+
+
+SQLStatement.prototype.isSpreadSheet = true;
+SQLStatement.prototype.sheetHeaders = function() {
+    return this.columns ? this.columns.map(c => c[0]) : []
+}
+
+SQLStatement.prototype.sheetRows = function() {
+    return this.rows.map(a => Array.isArray(a) ? a : [a])
+}
+
+SQLStatement.prototype.makeSpreadSheet = function() {
+    return XLSX.utils.aoa_to_sheet([this.sheetHeaders(), ...this.sheetRows()])
+};
+
+SQLQuery.prototype.makeWorkBook = function(names = []) {
+    const sheets = this.results.map(s => s.makeSpreadSheet()).filter(s => s)
+    const book = XLSX.utils.book_new();
+    for (const n in sheets) {
+        XLSX.utils.book_append_sheet(
+            book, sheets[n], names[n] || ("Sheet " + (n + 1)));
+    }
+    return book;
+}
+
+SQLQuery.prototype.writeFile = function(conf = {
+    name: "Spreadsheet-" + new Date()
+}) {
+     XLSX.writeFile(this.makeWorkBook(), conf.name + ".xlsb", {compression:true});
+}
+#+end_src
+
+
+
+
+
+
+
+
+
+* Backend
+
+#+begin_src scheme :tangle "./api/simple-query.ss"
+(export #t)
+(import :drewc/db/postgresql  :drewc/db/postgresql-driver
+
+        :drewc/db/dbi
+        :drewc/pgui/catalog
+        :drewc/pgui/api/login
+        :drewc/ftw :std/sugar (only-in :std/error error-irritants))
+
+(def (pgui-simple-sql-query conn str)
+  (def db (if (string? conn) (uuid->db conn) conn))
+  (def q (postgresql-query db str))
+  (def (res->hash res)
+    (def type (if (postgresql-statement? res) "statement" "command"))
+    (def complete (postgresql-command-complete res))
+    (def params (and (postgresql-statement? res)
+                     (postgresql-statement-params res)))
+    (def cols (and (postgresql-statement? res)
+                   (postgresql-statement-cols res)))
+    (def rows (map (lambda (row) (if (= (length cols) 1) (vector row) row))
+                   (sql-query res)))
+    (hash (type: type)
+          (complete: complete)
+          (params: params)
+          (columns: cols)
+          (rows: rows)))
+  (parameterize ((current-catalog simple-catalog))
+    (let (res (sql-query q))
+      (def notices (map car (postgresql-command-notices q)))
+      (def results (map res->hash res))
+      (hash (type: "query")
+            (db: (if (string? conn) conn "uuid not present"))
+            (notices: notices)
+            (results: results)))))
+
+
+(define-endpoint simple-query "^/api/simple-query")
+
+(def (simple-query/POST)
+  (try
+   (def jso (http-request-body-json*))
+   (let-hash jso
+     (def uuid (hash-get .server 'uuid))
+     (def res (pgui-simple-sql-query uuid .string))
+     (respond/JSON res))
+   (catch (e)
+     (respond/JSON
+      code: 500
+      (hash (error:
+             (hash (display:
+                    (with-output-to-string
+                      "" (cut ##display-exception e (current-output-port))))
+                   (code: (assget #\C (error-irritants e)))
+                   (message: (assget #\M (error-irritants e)))
+                   (type: (##type-name (object-type e))))))))))
+#+end_src
+* Test Queries
+
+#+begin_src sql
+DROP TABLE IF EXISTS _foo_;
+CREATE TABLE _foo_ AS SELECT generate_series AS num FROM GENERATE_SERIES(1,5);
+SELECT * FROM _foo_;
+DROP TABLE IF EXISTS _foo_;
+#+end_src
