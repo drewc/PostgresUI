@@ -26,8 +26,8 @@ export function pgLogin (host, port,username, passwd = false, db = username) {
         .then(res => {
             console.warn("Login Success?", res)
             delete loginData.passwd;
-            api.setServersHistoryItem(loginData)
             loginData.uuid = res.data.uuid;
+            api.setServersHistoryItem(loginData)
             api.servers.push(loginData);
             return loginData;
         })
@@ -68,7 +68,7 @@ export default {
                             (list->hash-table
                              `((error . ,(with-output-to-string
                                            ""
-                                           (cut ##display-exception e)))))))))
+                                           (cut ##display-exception e (current-output-port))))))))))
 #+end_src
 
 ** /File/ ~/api/login.ss~
@@ -79,7 +79,7 @@ export default {
 #+begin_src scheme :tangle login.ss :noweb yes
 (export #t)
 (import :drewc/ftw :std/misc/uuid :std/sugar
-        :std/db/postgresql :std/db/dbi :std/error)
+        :drewc/db/postgresql :drewc/db/dbi :std/error)
 
 (def default-connection-table (make-hash-table))
 (def current-connection-table (make-parameter default-connection-table))

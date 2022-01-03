@@ -65,7 +65,6 @@ I have a ~~/bin~ directory that I use. This gets me out of ~$PATH~ for a lot of 
 
 #+begin_src shell
 ln -s ~/me/src/vnode/bin/* ~/bin
-
 #+end_src
 
 * Fast, disk space efficient package manager: ~pnpm~!
@@ -74,10 +73,30 @@ I've tried ~yarn~, ~npm~ and various cousins thereof. I try for monorepos. Now g
 
 #+begin_src shell
 ~/bin/npm install --global pnpm
+~/bin/pnpm config set global-bin-dir $(~/bin/npm bin -g)
+
 #+end_src
 
 Now in this repo install it/both as well.
 
 #+begin_src
 ~/bin/npm install pnpm npm
+#+end_src
+
+** Updating
+
+#+begin_src shell
+~/bin/pnpm install --global pnpm
+# Nothing to stop. No server is running for the store at /home/drewc/.pnpm-store/v3
+# Packages: +1
+# +
+# Packages are hard linked from the content-addressable store to the virtual store.
+#   Content-addressable store is at: /home/drewc/.pnpm-store/v3
+#   Virtual store is at:             node_modules/.pnpm
+
+# /home/drewc/me/src/vnode/pnpm-global/5:
+# + pnpm 6.22.2
+
+# Progress: resolved 1, reused 0, downloaded 1, added 1, done
+
 #+end_src

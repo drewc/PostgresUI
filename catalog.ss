@@ -1,8 +1,8 @@
 (export #t)
-(import :std/db/postgresql  :std/db/postgresql-driver
-        :std/db/dbi :std/text/json)
+(import :drewc/db/postgresql  :drewc/db/postgresql-driver
+        :drewc/db/dbi :std/text/json)
 
-(extern namespace: "std/db/postgresql"
+(extern namespace: "drewc/db/postgresql"
   serialize-boolean deserialize-boolean
   identity-string)
 

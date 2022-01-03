@@ -10,8 +10,6 @@ export default defineConfig({
             // string shorthand
             '/api': 'http://localhost:8389'
         }
-    }// ,
-    // optimizeDeps: {
-    //     include: [ "./html/pgREPL.html"]
-    // }
+    },
+    optimizeDeps: { exclude: ["vue-router"] }
 })

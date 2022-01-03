@@ -6,4 +6,7 @@ gxi -e "(import :drewc/gerbil-swank :gerbil/gambit/threads)" \
     -e '(import :drewc/pgui/api/login)'\
     -e '(import :drewc/pgui/api/prepare)'\
     -e '(import :drewc/pgui/api/query)'\
+    -e '(import :drewc/pgui/api/simple-query)'\
+    -e '(import :drewc/pgui/api/status)'\
+    -e '(import :drewc/pgui/api/report)'\
     -e "(ensure-pgui-ftw-server!)" -

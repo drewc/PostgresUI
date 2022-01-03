@@ -8,13 +8,13 @@ const props = defineProps({
 })
 
 function resultHeaders(res = props.result) {
-    return res.columns.map(c => c[0])
+    return res.columns ? res.columns.map(c => c[0]) : []
 }
 
 console.log("result", props.result);
 
 function resultRows(res = props.result) {
-    return res.results.map(a => Array.isArray(a) ? a : [a])
+    return res.rows.map(a => Array.isArray(a) ? a : [a])
 }
 
 function resultQuery(res = props.result) { return res.text }
@@ -77,43 +77,52 @@ function hideModal() {
 </script>
 
 <template>
-  <div>
-    <button class="uk-button uk-button-default sql-menu-button" type="button"><span uk-icon="table"></span></button>
-<div uk-dropdown>
+<div>
+  <button class="uk-button uk-button-default sql-menu-button" type="button">
+    <span uk-icon="table"></span>
+  </button>
+  <div uk-dropdown>
     <ul class="uk-nav uk-dropdown-nav">
-        <li class="uk-nav-header">Spreadsheet</li>
-        <li>Name: <input v-model="sheetname" /> </li>
-        <li>
-          <button
-            type="button"
-            @click="makeAndDownloadSheetBook(result, sheetname)">
-            Download </button></li>
-
-        <li><a href="#" @click="showModal()">fullscreen</a></li>
-        <li class="uk-nav-divider"></li>
-        <li><a href="#">Item</a></li>
+      <!-- <li class="uk-nav-header">Spreadsheet</li> -->
+      <!-- <li>Name: <input v-model="sheetname" /> </li> -->
+      <!-- <li> -->
+      <!--   <button type="button" -->
+      <!--     @click="makeAndDownloadSheetBook(result, sheetname)"> -->
+      <!--     Download -->
+      <!--   </button> -->
+      <!-- </li> -->
+  
+      <!-- <li class="uk-nav-header">Report</li> -->
+      <!-- <li> -->
+      <!--   <router-link -->
+      <!--     :to="{ name: 'save-new-report', params: { query: result.text }}" -->
+      <!--     >Save as Report</router-link> -->
+      <!-- </li> -->
+      <li><a href="#" @click="showModal()">fullscreen</a></li>
+      <!-- <li class="uk-nav-divider"></li> -->
+      <!-- <li><a href="#">Item</a></li> -->
     </ul>
-</div>
-<div ref="result" class="sql-result">
-  <div ref="cluster">
-<Clusterize
-  :headers="resultHeaders(result)"
-  :cluster="resultRows(result)"
-  :caption="resultQuery(result)"
-  />
-</div>
-</div>
-<div
-  ref="modal" class="uk-modal-full sql-result-modal"
-  uk-modal>
-  <div class="uk-modal-dialog" ref="md" uk-height-viewport>
-  <button
-          class="uk-modal-close-full uk-close-large"
-          type="button" uk-close></button>
-  Here!!
+  </div>
+  
+ <div ref="result" class="sql-result">
+    <div ref="cluster">
+      <Clusterize
+        :headers="resultHeaders(result)"
+        :cluster="resultRows(result)"
+        />
+    </div>
+  </div>
+  <div
+    ref="modal" class="uk-modal-full sql-result-modal"
+    uk-modal>
+    <div class="uk-modal-dialog" ref="md" uk-height-viewport>
+      <button
+        class="uk-modal-close-full uk-close-large"
+        type="button" uk-close></button>
+      Here!!
 
-</div>
-</div>
+    </div>
+  </div>
 </div>
 </template>
 
@@ -132,8 +141,8 @@ function hideModal() {
   .sql-menu-button:hover {
     opacity: 100
   }
-  
- .sql-result-modal .clusterize-scroll{
+
+.sql-result-modal .clusterize-scroll{
   max-height: 90vh;
   overflow: auto;
 }

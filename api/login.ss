@@ -1,6 +1,6 @@
 (export #t)
 (import :drewc/ftw :std/misc/uuid :std/sugar
-        :std/db/postgresql :std/db/dbi :std/error)
+        :drewc/db/postgresql :drewc/db/dbi :std/error)
 
 (def default-connection-table (make-hash-table))
 (def current-connection-table (make-parameter default-connection-table))
@@ -33,4 +33,4 @@
                             (list->hash-table
                              `((error . ,(with-output-to-string
                                            ""
-                                           (cut ##display-exception e)))))))))
+                                           (cut ##display-exception e (current-output-port))))))))))

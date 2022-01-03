@@ -13,10 +13,13 @@
 
   import pgAPI from "./assets/js/pgAPI.js"
   import pgREPL from './components/pgREPL.vue'
+  import page from './components/Page.vue'
 
 
 </script>
 
 <template>
-  <pgREPL></pgREPL>
+  <div>
+   <page/>
+  </div>
 </template>

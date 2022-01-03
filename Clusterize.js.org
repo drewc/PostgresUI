@@ -2,6 +2,25 @@
 
 We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the rescue.
 
+* View an SQL result
+
+#+begin_src vue :tangle "./pgui/src/components/ClusterizeResult.vue"
+<script setup>
+import Clusterize from './Clusterize.vue'
+const props = defineProps({
+    result: Object,
+    caption: String
+})
+
+</script>
+<template>
+<Clusterize
+ :headers="result.columnHeaders()"
+ :cluster="result.resultRows()"
+ :caption="caption" />
+</template>
+#+end_src
+
 * Vue SFC
 :PROPERTIES:
 :ID:       67eabc15-850a-49a2-b754-8a4acbc1f182
@@ -60,7 +79,7 @@ We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the
  onMounted(() => {
   const sa = self.refs.scrollArea, ca = self.refs.contentArea;
 
-  console.log("New Cluster", props.cluster, props.headers)
+  // console.log("New Cluster", props.cluster, props.headers)
 
    clusterObject =  new Clusterize({
    rows: props.cluster.map(makeTR),
@@ -68,7 +87,7 @@ We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the
    contentElem: ca
  });
   rowCount();
-  console.warn('Cluster Mounted!', self, sa, ca)
+  // console.warn('Cluster Mounted!', self, sa, ca)
 
 })
 
@@ -87,7 +106,7 @@ We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the
       </tbody>
     </table>
   </div>
-  <span class="label alert radius rows-amount-helper">Rows: {{ rows }}</span>
+  <span class="label alert radius rows-amount-helper uk-text-success">Rows: {{ rows }}</span>
  </div>
 
 
@@ -117,7 +136,7 @@ We need to display large datasets. https://github.com/NeXTs/Clusterize.js to the
     color: #333;
     position: -webkit-sticky;
     position: sticky;
-    top: 3em;
+    top: 0em;
     border-left: 1px solid #eee;
     border-bottom: 1px solid #ddd;
     font-size: 13px;

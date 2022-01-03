@@ -11,9 +11,9 @@
   
   const emits = defineEmits(['login']);
   
-  const username = ref()
+  const username = ref("maxclaims")
   const pw = ref()
-  const host = ref()
+  const host = ref("localhost")
   const port = ref()
   const database = ref() ;
   
@@ -78,9 +78,6 @@
 
 <template>
   <div class="uk-flex uk-flex-center uk-flex-middle uk-background-muted" >
-    <div class="uk-position-bottom-center uk-position-small uk-visible@m uk-position-z-index">
-      <span class="uk-text-small uk-text-muted">© 2019 Company Name - <a href="https://github.com/zzseba78/Kick-Off">Created by KickOff</a> | Built with <a href="http://getuikit.com" title="Visit UIkit 3 site" target="_blank" data-uk-tooltip><span data-uk-icon="uikit"></span></a></span>
-    </div>
     <div class="uk-padding-small">
       <!-- login -->
       <fieldset class="uk-fieldset">

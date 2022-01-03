@@ -1,5 +1,6 @@
 #+TITLE: Codemirror: Editor for SQL + more
 
+
 * Pre-Install
 #+begin_src shell
 cd /tmp ;
@@ -56,6 +57,16 @@ CodeMirror.prototype.lastChar  = function (linenum) {
 :ID:       6157841d-0770-4465-967f-883c7f0c22c7
 :END:
 #+begin_src vue :tangle "./pgui/src/components/CodeMirror.vue" :noweb yes
+<script setup>
+import { ref } from 'vue'
+
+const props = defineProps({
+    setValue: String
+})
+
+
+
+</script>
 <script>
 import CodeMirror from 'codemirror'
 import 'codemirror/mode/sql/sql.js'
@@ -94,7 +105,7 @@ console.log('wincode', CodeMirror, CodeMirror.prototype)
  }
 </script>
 <template>
-  <textarea ref="textarea">SELECT 'Code Mirror';</textarea>
+  <textarea ref="textarea">{{ setValue }}</textarea>
 </template>
 
 <style src="codemirror/lib/codemirror.css"></style>

@@ -16,8 +16,8 @@ export function pgLogin (host, port,username, passwd = false, db = username) {
         .then(res => {
             console.warn("Login Success?", res)
             delete loginData.passwd;
-            api.setServersHistoryItem(loginData)
             loginData.uuid = res.data.uuid;
+            api.setServersHistoryItem(loginData)
             api.servers.push(loginData);
             return loginData;
         })

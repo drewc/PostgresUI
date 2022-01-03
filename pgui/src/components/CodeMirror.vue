@@ -1,3 +1,13 @@
+<script setup>
+import { ref } from 'vue'
+
+const props = defineProps({
+    setValue: String
+})
+
+
+
+</script>
 <script>
 import CodeMirror from 'codemirror'
 import 'codemirror/mode/sql/sql.js'
@@ -52,7 +62,7 @@ CodeMirror.prototype.lastChar  = function (linenum) {
  }
 </script>
 <template>
-  <textarea ref="textarea">SELECT 'Code Mirror';</textarea>
+  <textarea ref="textarea">{{ setValue ? setValue : 'SELECT * from claim limit 127;' }}</textarea>
 </template>
 
 <style src="codemirror/lib/codemirror.css"></style>

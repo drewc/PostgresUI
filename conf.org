@@ -9,6 +9,8 @@ There are a few things that (could) be set at runtime.
 (export #t)
 
 (def pgui-wwwroot (current-directory))
+(def pgui-report-path
+  (path-expand "reports/" (current-directory)))
 
 (def (conf-value . vars)
   (if (eq? (car vars) 'pgui-wwwroot)
@@ -16,3 +18,8 @@ There are a few things that (could) be set at runtime.
     (void)))
 #+end_src
 
+#+begin_src json :tangle pgui/pgui.conf.json
+{
+    "defaultServer": 1
+}
+#+end_src

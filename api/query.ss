@@ -1,7 +1,7 @@
 (export #t)
-(import :std/db/postgresql  :std/db/postgresql-driver
+(import :drewc/db/postgresql  :drewc/db/postgresql-driver
 
-        :std/db/dbi
+        :drewc/db/dbi
         :drewc/pgui/catalog
         :drewc/pgui/api/login :drewc/pgui/api/prepare
         :drewc/ftw :std/sugar (only-in :std/error error-irritants))
@@ -29,7 +29,7 @@
      (def pgstmt (stmt<-name .name))
      (def stmt (pgui-sql-statement-stmt pgstmt))
      (def args (or .?args []))
-     (def cols (std/db/postgresql#postgresql-statement-cols stmt))
+     (def cols (drewc/db/postgresql#postgresql-statement-cols stmt))
      (def res (apply pgui-sql-query .uuid pgstmt args))
      (respond/JSON (hash (name: .name)
                          (uuid: .uuid)

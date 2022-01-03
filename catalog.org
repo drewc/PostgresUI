@@ -9,7 +9,7 @@
 A lot of the time we simply want a string or number input/output and not our wonderful gerbil objects.
 
 #+begin_src scheme :noweb-ref simple-catalog
-(extern namespace: "std/db/postgresql"
+(extern namespace: "drewc/db/postgresql"
   serialize-boolean deserialize-boolean
   identity-string)
 
@@ -38,8 +38,8 @@ That way we can put on passing data to the browser.
 :END:
 #+begin_src scheme :tangle catalog.ss :noweb yes
 (export #t)
-(import :std/db/postgresql  :std/db/postgresql-driver
-        :std/db/dbi :std/text/json)
+(import :drewc/db/postgresql  :drewc/db/postgresql-driver
+        :drewc/db/dbi :std/text/json)
 
 <<simple-catalog>>
 

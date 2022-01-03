@@ -50,7 +50,7 @@
  onMounted(() => {
   const sa = self.refs.scrollArea, ca = self.refs.contentArea;
 
-  console.log("New Cluster", props.cluster, props.headers)
+  // console.log("New Cluster", props.cluster, props.headers)
 
    clusterObject =  new Clusterize({
    rows: props.cluster.map(makeTR),
@@ -58,7 +58,7 @@
    contentElem: ca
  });
   rowCount();
-  console.warn('Cluster Mounted!', self, sa, ca)
+  // console.warn('Cluster Mounted!', self, sa, ca)
 
 })
 
@@ -77,7 +77,7 @@
       </tbody>
     </table>
   </div>
-  <span class="label alert radius rows-amount-helper">Rows: {{ rows }}</span>
+  <span class="label alert radius rows-amount-helper uk-text-success">Rows: {{ rows }}</span>
  </div>
 
 
@@ -97,6 +97,8 @@
   border: 1px solid #BBB;
 }
 
+
+
 .clusterize .uk-table {
    margin-bottom: 0.5em;
 }
@@ -105,7 +107,7 @@
     color: #333;
     position: -webkit-sticky;
     position: sticky;
-    top: 3em;
+    top: 0em;
     border-left: 1px solid #eee;
     border-bottom: 1px solid #ddd;
     font-size: 13px;

@@ -1,6 +1,13 @@
 #+TITLE: PostgresUI
 
 I need an easy way for my clients to access reports. Having a UI just for that
-makes sense!
+makes sense! Eventually it will become a way to interact and admin a PostgreSQL system along with an UI for non-techinical interaction.
 
-* PGREPL: A shell for PostgreSQL
+* Introduction
+
+There are two "parts", a client and a server.
+
+* Features
+
+ + [[file:Query.org][Queries]] :: Yup.
+ + [[file:Reports.org][Reports]] :: Generate, Save, Modify.

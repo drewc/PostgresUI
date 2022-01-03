@@ -1,5 +1,5 @@
 (export #t)
-(import :std/db/postgresql :std/db/dbi :drewc/pgui/api/login
+(import :drewc/db/postgresql :drewc/db/dbi :drewc/pgui/api/login
         :drewc/ftw :std/sugar (only-in :std/error error-irritants))
 
 
@@ -12,7 +12,7 @@
 (defstruct pgui-sql-statement (text stmt))
 
 (def (pgui-sql-statement-name pgui-stmt)
-  (std/db/dbi#statement-e (pgui-sql-statement-stmt pgui-stmt)))
+  (drewc/db/dbi#statement-e (pgui-sql-statement-stmt pgui-stmt)))
 
 (def (pgui-sql-prepare db-uuid text)
   (def db (db<-uuid db-uuid))
@@ -29,6 +29,8 @@
    (def jso (http-request-body-json*))
    (let-hash jso
      (def name (pgui-sql-prepare .uuid .text))
+     (def stmt (stmt<-name name))
+     (def cols (drewc/db/postgresql#postgresql-statement-cols stmt))
      (respond/JSON (hash (name: name))))
    (catch (e)
      (respond/JSON

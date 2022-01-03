@@ -52,7 +52,7 @@ function getPreviousHistory() {
     if (!!his && reses.length !== historyCount) {
         historyCount = historyCount + 1
     }
-    return his ? his.text : false;
+    return his ? his.string : false;
 }
 
 function getNextHistory() {
@@ -63,7 +63,7 @@ function getNextHistory() {
         const reses = results.value;
         const his = reses[reses.length - historyCount];
        console.log("NextHistory?", reses, his, reses.length, historyCount)
-        return his ? his.text : false;
+        return his ? his.string : false;
     }
 }
    #+end_src
@@ -115,11 +115,68 @@ function addHistoryMap(cm, self=getCurrentInstance()) {
 
 * View the Results
 
-#+begin_src vue :noweb-ref results-view
+When viewing the code there's a menu. When iterating the result query is ~qres~.
+
+
+** Menu Dropdown
+
+#+begin_src js :noweb-ref bookName
+function bookName(qres) {
+  return qres.workBookName || "Spreadsheet-" + new Date()
+}
+
+function reportRouterLinkTo(qres) {
+     const to = {
+              name: 'save-new-report',
+              params: { query: qres.string,
+                        cacheNum: results.value.indexOf(qres)
+                      }
+             }
+    console.log('To:', to)
+    return to;
+ }
+#+end_src
+
+#+begin_src html :noweb-ref result-menudrop
+<button class="uk-button uk-button-default sql-menu-button" type="button">
+  <span uk-icon="table"></span>
+</button>
+<div uk-dropdown>
+  <ul class="uk-nav uk-dropdown-nav">
+    <li class="uk-nav-header">Spreadsheet</li>
+    <li>Name: <input v-model="qres.workBookName" /> </li>
+    <li>
+      <button type="button"
+        @click="qres.writeFile({ name: bookName(qres) })">
+        Download
+      </button>
+    </li>
+    <li class="uk-nav-header">Report {{ results.indexOf(qres) }}</li>
+    <li>
+      <router-link
+        :to="reportRouterLinkTo(qres)"
+        >Save as Report</router-link>
+    </li>
+  </ul>
+</div>
+
+#+end_src
+
+#+begin_src vue :noweb-ref results-view :noweb yes
 <div style="max-height: 60vh; overflow: auto; display: flex; "
      class="uk-flex uk-flex-column-reverse">
-  <div v-for="res in [...results].reverse()">
-    <ResultsTable :result="res" />
+  <div v-for="qres in [...results].reverse()">
+    <hr>
+    <<result-menudrop>>
+  <pre><code>{{ qres.string }}</code></pre>
+  =>
+  <div v-for="res in [...qres.results]" class="res" >
+    <ResultsTable v-if="res.columns" :result="res" />
+    <pre v-else class="uk-text-success">{{ res.complete }}</pre>
+  <!--  <div v-for="res in [...qres]"> -->
+  <!--  {{ res }} -->
+  <!-- </div> -->
+  </div>
   </div>
   </div>
 #+end_src
@@ -130,29 +187,37 @@ This entire point of the REPL.
 
 #+begin_src js :noweb-ref queryCodeMirror
 
-function queryCodeMirror(cm = codemirror, server = currentServer.value) {
-   console.log('Querying:', cm.getValue);
-    return prepareCodeMirror(cm, server).then(stmt => {
-     if (!!stmt && stmt.error) {
-         error.value = stmt;
-         return stmt
-     } else if (!stmt) {
-         return null;
-      } else {
-          return stmt.query().then(rstmt => {
-              Object.assign(stmt, rstmt)
-              // console.log('add results of query', stmt)
-              results.value.push(stmt)
-              cm.setValue("")
-              return stmt;
-          })
+function queryCodeMirror(cm = codemirror, server = currentServer()) {
+   console.log('Querying:', cm.getValue());
+    const q = new SQLQuery(cm.getValue())
+    console.log('Simple Query', q);
 
-      }
+    q.run(server).then(res => {
+        console.log('done sq', res, q)
+        results.value.push(q)
     })
-        .catch(e => {
-            console.error('Here Now Like err!', e.message,  e.response && e.response.data)
-            window.err = e;
-        })
+     .catch(e => console.error(e));
+    // return prepareCodeMirror(cm, server).then(stmt => {
+    //  if (!!stmt && stmt.error) {
+    //      error.value = stmt;
+    //      return stmt
+    //  } else if (!stmt) {
+    //      return null;
+    //   } else {
+    //       return stmt.query().then(rstmt => {
+    //           Object.assign(stmt, rstmt)
+    //           // console.log('add results of query', stmt)
+    //           results.value.push(stmt)
+    //           cm.setValue("")
+    //           return stmt;
+    //       })
+
+    //   }
+    // })
+    //     .catch(e => {
+    //         console.error('Here Now Like err!', e.message,  e.response && e.response.data)
+    //         window.err = e;
+    //     })
 
 }
 #+end_src
@@ -172,7 +237,7 @@ When the statement is not complete we get a certain error. When that happens we 
 
 #+begin_src js :noweb-ref prep-stmt
 
-function prepareCodeMirror(cm = codemirror, server = currentServer.value) {
+function prepareCodeMirror(cm = codemirror, server = currentServer()) {
     //     return cm.prepareSQL(cm, server);
     // }
 
@@ -208,7 +273,7 @@ function prepareCodeMirror(cm = codemirror, server = currentServer.value) {
 }
 
 globalCodeMirror.prototype.prepareSQL =
-    function (server = currentServer.value) {
+    function (server = currentServer()) {
         const cm = this;
         return prepareCodeMirror(cm, server)
     }
@@ -223,6 +288,7 @@ globalCodeMirror.prototype.prepareSQL =
 <script setup>
 import { ref, getCurrentInstance } from 'vue'
 import pgAPI from '../assets/js/pgAPI'
+import { SQLQuery } from '../assets/js/api/simple-query'
 import PgLogin from './PgLogin.vue'
 import CodeMirror from './CodeMirror.vue'
 import globalCodeMirror from 'codemirror'
@@ -233,23 +299,29 @@ import { onMounted } from 'vue'
 
 import XLSX from 'xlsx'
 import ResultsTable from './ResultsTable.vue'
-
+const resultCache = pgAPI.resultCache;
+const results = ref(resultCache);
 const self =  getCurrentInstance();
 
 var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
 
 console.log('setup REPL!', self, this)
-
+const update = ref();
 const servers = pgAPI.servers
 
-const currentServer = ref(
-    servers.value && servers.value.length > 0 ? servers.value.slice(-1)[0] : undefined)
+console.log('setup REPL!', self, this, servers)
+
+function currentServer()  {
+    return servers.value && servers.value.length > 0 ? servers.value.slice(-1)[0] : undefined
+}
+
+console.log('setup REPL!', self, servers.value[0] )
+console.log('currentSerbver', currentServer() )
 
 let codemirror ;
 
 const error = ref();
-const results = ref([])
 
 <<history-setup>>
 
@@ -277,7 +349,6 @@ function codeMirrorInit(cm) {
 }
 
 function innerWidth() { return window.innerWidth };
-
 function isMobile () { return innerWidth() <= 640 }
 
 
@@ -307,6 +378,8 @@ var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
 window.huh = import('../../pgui.conf.json')
 
+<<bookName>>
+
 
 </script>
 
@@ -319,10 +392,14 @@ window.huh = import('../../pgui.conf.json')
   <<pgrepl-html>>
 </template>
 
-<style src="/src/assets/css/dashboard.css"> </style>
 <style>
 .sql-result .clusterize-scroll {
     max-height: 45vh;
+}
+
+.res pre {
+ margin: 0px;
+ padding: 0px;
 }
 
 
@@ -344,7 +421,7 @@ window.huh = import('../../pgui.conf.json')
 #+begin_src html :noweb-ref server-left-bar
 <!-- LEFT BAR -->
   <aside :id="!isMobile() ? 'left-col' : null" class="uk-light"
-         v-if="currentServer && currentServer.uuid">
+         v-if="currentServer() && currentServer().uuid">
    <div class="left-logo uk-flex uk-flex-middle">
     <!-- <img class="custom-logo" src="img/dashboard-logo.svg" alt=""> -->
    </div>
@@ -352,7 +429,7 @@ window.huh = import('../../pgui.conf.json')
     <!-- <img src="img/avatar.svg" alt="" class="uk-border-circle profile-img"> -->
     <div class="uk-position-relative uk-text-center uk-display-block">
         <a href="#" class="uk-text-small uk-text-muted uk-display-block uk-text-center" data-uk-icon="icon: triangle-down; ratio: 0.7">
-          {{ currentServer.host }}</a>
+          {{ currentServer().host }}</a>
         <!-- user dropdown -->
         <div class="uk-dropdown user-drop" data-uk-dropdown="mode: click; pos: bottom-center; animation: uk-animation-slide-bottom-small; duration: 150">
          <ul class="uk-nav uk-dropdown-nav uk-text-left">
@@ -493,9 +570,9 @@ window.huh = import('../../pgui.conf.json')
 :END:
 
 #+begin_src html :tangle ./pgui/src/assets/html/pgREPL.html :noweb yes :noweb-ref pgrepl-html
-<<server-left-bar>>
  <!-- CONTENT -->
-  <div :id="(currentServer && currentServer.uuid) ? 'content' : null" data-uk-height-viewport="expand: true">
+    {{ update }}
+    {{ currentServer() }}
 
    <div class="uk-container uk-container-expand">
      <div style="position:relative">
@@ -506,13 +583,14 @@ window.huh = import('../../pgui.conf.json')
 
      <<results-view>>
 
-        <CodeMirror v-if="currentServer && currentServer.uuid"
+        <CodeMirror v-if="currentServer() && currentServer().uuid"
+                    setValue="SHOW ALL;"
              @init="codeMirrorInit($event)"
              ref="CodeMirrorElement"
              @query="queryCodeMirror"
              />
- <PgLogin v-else msg="PostgreSQL Server Logaain" :currentServer="currentServer"
-          @login="currentServer = $event"/>
+ <PgLogin v-else msg="PostgreSQL Server Login" :currentServer="currentServer()"
+          @login="servers.push($event)"/>
 
      </div>
      <!-- <div> Results: {{ results }} </div> -->
@@ -522,7 +600,6 @@ window.huh = import('../../pgui.conf.json')
      <p class="uk-text-small uk-text-center">Copyright 2019 - <a href="https://github.com/zzseba78/Kick-Off">Created by KickOff</a> | Built with <a href="http://getuikit.com" title="Visit UIkit 3 site" target="_blank" data-uk-tooltip><span data-uk-icon="uikit"></span></a> </p>
     </footer>
    </div>
-  </div>
   <!-- /CONTENT -->
   <!-- OFFCANVAS -->
   <div id="offcanvas-nav" data-uk-offcanvas="flip: true; overlay: true">

@@ -56,6 +56,14 @@ SqlStatement.prototype.query = function (obj) {
         return this.prepare(obj).then(stmt => this.query(stmt))
     }       
 }
+
+SqlStatement.prototype.columnHeaders = function () {
+        return this.columns.map(c => c[0])
+}
+
+SqlStatement.prototype.resultRows = function () {
+    return this.results.map(a => Array.isArray(a) ? a : [a])
+}
 #+end_src
 
 
@@ -88,10 +96,7 @@ export function isServerLive(server) {
 Servers have a prototype.
 
 #+begin_src js :noweb-ref pgServer
-export function pgServer(args) {
-    Object.assign(this, args)
-}
-
+export const pgServer = _pgServer
 pgServer.prototype.isLive = function() { return isServerLive(this); }
 #+end_src
 
@@ -102,21 +107,27 @@ pgServer.prototype.isLive = function() { return isServerLive(this); }
 :END:
 Here's where that file is tangled.
 
-#+begin_src js :tangle "pgui/src/js/pgAPI.js" :noweb yes :mkdirp yes
-import { get as aget, post as apost} from 'axios'
+#+begin_src js :tangle "pgui/src/assets/js/pgAPI.js" :noweb yes
+import { get as aget, post as apost} from './api/axios'
+import { pgServer as _pgServer} from './api/servers'
+import { Report } from './api/report'
+export { Report };
+import "./api/status"
 import { reactive, ref } from 'vue';
 
-import { getServersHistory, setServersHistoryItem  } from './history'
+import { getServersHistory,
+         setServersHistoryItem,
+         openHistoryDB,
+         DB } from './history'
+
+export function historyDB() { return DB; }
 
 export const version = 0.1
 
 export const get = aget;
-export function post (api, args) {
-    let uri = "/api/" + api
-    // console.log('Post:', uri, args)
-    return apost(uri, args);
-};
+export const post = apost;
 
+export const resultCache = []
 
 <<isServerLive>>
 
@@ -124,8 +135,9 @@ export function post (api, args) {
 
 export const pgAPI = {
     version, get, post, ref,
-    getServersHistory, setServersHistoryItem,
-    isServerLive, pgServer
+    getServersHistory, setServersHistoryItem, historyDB,
+    isServerLive, pgServer,
+    resultCache, Report
 
 }
 
@@ -134,14 +146,58 @@ export const pgAPI = {
 pgAPI.SqlStatement = SqlStatement;
 <<re-pg-api>>
 
-export const servers = ref(getServersHistory().map(s => new pgServer(s)));
+
+export const servers = ref([]);
+
+export function serverStatus (srv) {
+
+    return post('status', srv);
+
+};
+
+pgAPI.serverStatus = serverStatus;
+
+const serversHistory = []
+
+        // await getServersHistory() .then(h => h.map(s => new pgServer(s)));
+
+export async function liveServers() {
+    const lv = []
+    await openHistoryDB();
+    console.log("Have HistoryDB", DB);
+    await getServersHistory()
+        .then(h => h.map(s => serversHistory.push(new pgServer(s))));
+    await Promise.all(serversHistory.map(async (s) => {
+        // console.log("Find server status ", s);
+        const st = await pgAPI.serverStatus(s)
+        //console.log("Found server status ", st);
+        if (st.data && st.data.connected) {
+            lv.push(s)
+        }
+
+    }));
+    servers.value = lv
+    console.log('Set SErvers, ', currentServer(), servers.value)
+    return lv;
+}
+
+pgAPI.liveServers = liveServers;
+
+
+
+export function currentServer() {
+  return servers.value && servers.value.length > 0 ? servers.value.slice(-1)[0] : false;
+}
+
+pgAPI.currentServer = currentServer;
+
 
 api.servers = servers;
 
 
 
 
+
+
 export default pgAPI;
 #+end_src
-
-#+RESULTS:

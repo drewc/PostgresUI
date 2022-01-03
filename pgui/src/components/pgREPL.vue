@@ -1,6 +1,7 @@
 <script setup>
 import { ref, getCurrentInstance } from 'vue'
 import pgAPI from '../assets/js/pgAPI'
+import { SQLQuery } from '../assets/js/api/simple-query'
 import PgLogin from './PgLogin.vue'
 import CodeMirror from './CodeMirror.vue'
 import globalCodeMirror from 'codemirror'
@@ -11,23 +12,29 @@ import { onMounted } from 'vue'
 
 import XLSX from 'xlsx'
 import ResultsTable from './ResultsTable.vue'
-
+const resultCache = pgAPI.resultCache;
+const results = ref(resultCache);
 const self =  getCurrentInstance();
 
 var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
 
 console.log('setup REPL!', self, this)
-
+const update = ref();
 const servers = pgAPI.servers
 
-const currentServer = ref(
-    servers.value && servers.value.length > 0 ? servers.value.slice(-1)[0] : undefined)
+console.log('setup REPL!', self, this, servers)
+
+function currentServer()  {
+    return servers.value && servers.value.length > 0 ? servers.value.slice(-1)[0] : undefined
+}
+
+console.log('setup REPL!', self, servers.value[0] )
+console.log('currentSerbver', currentServer() )
 
 let codemirror ;
 
 const error = ref();
-const results = ref([])
 
 let historyCount = 1
 
@@ -38,7 +45,7 @@ function getPreviousHistory() {
     if (!!his && reses.length !== historyCount) {
         historyCount = historyCount + 1
     }
-    return his ? his.text : false;
+    return his ? his.string : false;
 }
 
 function getNextHistory() {
@@ -49,7 +56,7 @@ function getNextHistory() {
         const reses = results.value;
         const his = reses[reses.length - historyCount];
        console.log("NextHistory?", reses, his, reses.length, historyCount)
-        return his ? his.text : false;
+        return his ? his.string : false;
     }
 }
 function addHistoryMap(cm, self=getCurrentInstance()) {
@@ -118,7 +125,7 @@ function addEnterMap(cm, self=getCurrentInstance()) {
 
 
 
-function prepareCodeMirror(cm = codemirror, server = currentServer.value) {
+function prepareCodeMirror(cm = codemirror, server = currentServer()) {
     //     return cm.prepareSQL(cm, server);
     // }
 
@@ -154,7 +161,7 @@ function prepareCodeMirror(cm = codemirror, server = currentServer.value) {
 }
 
 globalCodeMirror.prototype.prepareSQL =
-    function (server = currentServer.value) {
+    function (server = currentServer()) {
         const cm = this;
         return prepareCodeMirror(cm, server)
     }
@@ -164,29 +171,37 @@ window.CodeMirror = globalCodeMirror
 
 
 
-function queryCodeMirror(cm = codemirror, server = currentServer.value) {
-   console.log('Querying:', cm.getValue);
-    return prepareCodeMirror(cm, server).then(stmt => {
-     if (!!stmt && stmt.error) {
-         error.value = stmt;
-         return stmt
-     } else if (!stmt) {
-         return null;
-      } else {
-          return stmt.query().then(rstmt => {
-              Object.assign(stmt, rstmt)
-              // console.log('add results of query', stmt)
-              results.value.push(stmt)
-              cm.setValue("")
-              return stmt;
-          })
+function queryCodeMirror(cm = codemirror, server = currentServer()) {
+   console.log('Querying:', cm.getValue());
+    const q = new SQLQuery(cm.getValue())
+    console.log('Simple Query', q);
 
-      }
+    q.run(server).then(res => {
+        console.log('done sq', res, q)
+        results.value.push(q)
     })
-        .catch(e => {
-            console.error('Here Now Like err!', e.message,  e.response && e.response.data)
-            window.err = e;
-        })
+     .catch(e => console.error(e));
+    // return prepareCodeMirror(cm, server).then(stmt => {
+    //  if (!!stmt && stmt.error) {
+    //      error.value = stmt;
+    //      return stmt
+    //  } else if (!stmt) {
+    //      return null;
+    //   } else {
+    //       return stmt.query().then(rstmt => {
+    //           Object.assign(stmt, rstmt)
+    //           // console.log('add results of query', stmt)
+    //           results.value.push(stmt)
+    //           cm.setValue("")
+    //           return stmt;
+    //       })
+
+    //   }
+    // })
+    //     .catch(e => {
+    //         console.error('Here Now Like err!', e.message,  e.response && e.response.data)
+    //         window.err = e;
+    //     })
 
 }
 
@@ -202,7 +217,6 @@ function codeMirrorInit(cm) {
 }
 
 function innerWidth() { return window.innerWidth };
-
 function isMobile () { return innerWidth() <= 640 }
 
 
@@ -232,6 +246,21 @@ var data = ['<tr>…</tr>', '<tr>…</tr>'];
 
 window.huh = import('../../pgui.conf.json')
 
+function bookName(qres) {
+  return qres.workBookName || "Spreadsheet-" + new Date()
+}
+
+function reportRouterLinkTo(qres) {
+     const to = {
+              name: 'save-new-report',
+              params: { query: qres.string,
+                        cacheNum: results.value.indexOf(qres)
+                      }
+             }
+    console.log('To:', to)
+    return to;
+ }
+
 
 </script>
 
@@ -241,101 +270,9 @@ window.huh = import('../../pgui.conf.json')
 <!-- </template> -->
 
 <template>
-  <!-- LEFT BAR -->
-    <aside :id="!isMobile() ? 'left-col' : null" class="uk-light"
-           v-if="currentServer && currentServer.uuid">
-     <div class="left-logo uk-flex uk-flex-middle">
-      <!-- <img class="custom-logo" src="img/dashboard-logo.svg" alt=""> -->
-     </div>
-     <div class="left-content-box  content-box-dark">
-      <!-- <img src="img/avatar.svg" alt="" class="uk-border-circle profile-img"> -->
-      <div class="uk-position-relative uk-text-center uk-display-block">
-          <a href="#" class="uk-text-small uk-text-muted uk-display-block uk-text-center" data-uk-icon="icon: triangle-down; ratio: 0.7">
-            {{ currentServer.host }}</a>
-          <!-- user dropdown -->
-          <div class="uk-dropdown user-drop" data-uk-dropdown="mode: click; pos: bottom-center; animation: uk-animation-slide-bottom-small; duration: 150">
-           <ul class="uk-nav uk-dropdown-nav uk-text-left">
-             <li v-for="server in servers"> {{ server.name }} </li>
-          <li><a href="#"><span data-uk-icon="icon: settings"></span> Configuration</a></li>
-          <li class="uk-nav-divider"></li>
-          <li><a href="#"><span data-uk-icon="icon: refresh"></span> Change Server </a></li>
-          <li class="uk-nav-divider"></li>
-          <li><a href="#"><span data-uk-icon="icon: sign-out"></span> Sign Out</a></li>
-           </ul>
-          </div>
-          <!-- /user dropdown -->
-      </div>
-     </div>
-  
-     <div class="left-nav-wrap">
-      <ul class="uk-nav uk-nav-default uk-nav-parent-icon" data-uk-nav>
-       <li class="uk-nav-header">ACTIONS</li>
-       <li><a href="#"><span data-uk-icon="icon: comments" class="uk-margin-small-right"></span>Messages</a></li>
-       <li><a href="#"><span data-uk-icon="icon: users" class="uk-margin-small-right"></span>Friends</a></li>
-       <li class="uk-parent"><a href="#"><span data-uk-icon="icon: thumbnails" class="uk-margin-small-right"></span>Templates</a>
-        <ul class="uk-nav-sub">
-         <li><a title="Article" href="https://zzseba78.github.io/Kick-Off/article.html">Article</a></li>
-         <li><a title="Album" href="https://zzseba78.github.io/Kick-Off/album.html">Album</a></li>
-         <li><a title="Cover" href="https://zzseba78.github.io/Kick-Off/cover.html">Cover</a></li>
-         <li><a title="Cards" href="https://zzseba78.github.io/Kick-Off/cards.html">Cards</a></li>
-         <li><a title="News Blog" href="https://zzseba78.github.io/Kick-Off/newsBlog.html">News Blog</a></li>
-         <li><a title="Price" href="https://zzseba78.github.io/Kick-Off/price.html">Price</a></li>
-         <li><a title="Login" href="https://zzseba78.github.io/Kick-Off/login.html">Login</a></li>
-         <li><a title="Login-Dark" href="https://zzseba78.github.io/Kick-Off/login-dark.html">Login - Dark</a></li>
-        </ul>
-       </li>
-       <li><a href="#"><span data-uk-icon="icon: album" class="uk-margin-small-right"></span>Albums</a></li>
-       <li><a href="#"><span data-uk-icon="icon: thumbnails" class="uk-margin-small-right"></span>Featured Content</a></li>
-       <li><a href="#"><span data-uk-icon="icon: lifesaver" class="uk-margin-small-right"></span>Tips</a></li>
-       <li class="uk-parent">
-        <a href="#"><span data-uk-icon="icon: comments" class="uk-margin-small-right"></span>Reports</a>
-        <ul class="uk-nav-sub">
-         <li><a href="#">Sub item</a></li>
-         <li><a href="#">Sub item</a></li>
-        </ul>
-       </li>
-      </ul>
-      <div class="left-content-box uk-margin-top">
-  
-        <h5>Daily Reports</h5>
-        <div>
-         <span class="uk-text-small">Traffic <small>(+50)</small></span>
-         <progress class="uk-progress" value="50" max="100"></progress>
-        </div>
-        <div>
-         <span class="uk-text-small">Income <small>(+78)</small></span>
-         <progress class="uk-progress success" value="78" max="100"></progress>
-        </div>
-        <div>
-         <span class="uk-text-small">Feedback <small>(-12)</small></span>
-         <progress class="uk-progress warning" value="12" max="100"></progress>
-        </div>
-  
-      </div>
-  
-     </div>
-     <div class="bar-bottom">
-      <ul class="uk-subnav uk-flex uk-flex-center uk-child-width-1-5" data-uk-grid>
-       <li>
-        <a href="#" class="uk-icon-link" data-uk-icon="icon: home" title="Home" data-uk-tooltip></a>
-       </li>
-       <li>
-        <a href="#" class="uk-icon-link" data-uk-icon="icon: settings" title="Settings" data-uk-tooltip></a>
-       </li>
-       <li>
-        <a href="#" class="uk-icon-link" data-uk-icon="icon: social"  title="Social" data-uk-tooltip></a>
-       </li>
-  
-       <li>
-        <a href="#" class="uk-icon-link" data-uk-tooltip="Sign out" data-uk-icon="icon: sign-out"></a>
-       </li>
-      </ul>
-     </div>
-    </aside>
-    <!-- /LEFT BAR -->
-  
    <!-- CONTENT -->
-    <div :id="(currentServer && currentServer.uuid) ? 'content' : null" data-uk-height-viewport="expand: true">
+      {{ update }}
+      {{ currentServer() }}
   
      <div class="uk-container uk-container-expand">
        <div style="position:relative">
@@ -346,18 +283,50 @@ window.huh = import('../../pgui.conf.json')
   
        <div style="max-height: 60vh; overflow: auto; display: flex; "
             class="uk-flex uk-flex-column-reverse">
-         <div v-for="res in [...results].reverse()">
-           <ResultsTable :result="res" />
+         <div v-for="qres in [...results].reverse()">
+           <hr>
+           <button class="uk-button uk-button-default sql-menu-button" type="button">
+             <span uk-icon="table"></span>
+           </button>
+           <div uk-dropdown>
+             <ul class="uk-nav uk-dropdown-nav">
+               <li class="uk-nav-header">Spreadsheet</li>
+               <li>Name: <input v-model="qres.workBookName" /> </li>
+               <li>
+                 <button type="button"
+                   @click="qres.writeFile({ name: bookName(qres) })">
+                   Download
+                 </button>
+               </li>
+               <li class="uk-nav-header">Report {{ results.indexOf(qres) }}</li>
+               <li>
+                 <router-link
+                   :to="reportRouterLinkTo(qres)"
+                   >Save as Report</router-link>
+               </li>
+             </ul>
+           </div>
+           
+         <pre><code>{{ qres.string }}</code></pre>
+         =>
+         <div v-for="res in [...qres.results]" class="res" >
+           <ResultsTable v-if="res.columns" :result="res" />
+           <pre v-else class="uk-text-success">{{ res.complete }}</pre>
+         <!--  <div v-for="res in [...qres]"> -->
+         <!--  {{ res }} -->
+         <!-- </div> -->
+         </div>
          </div>
          </div>
   
-          <CodeMirror v-if="currentServer && currentServer.uuid"
+          <CodeMirror v-if="currentServer() && currentServer().uuid"
+                      setValue="SHOW ALL;"
                @init="codeMirrorInit($event)"
                ref="CodeMirrorElement"
                @query="queryCodeMirror"
                />
-   <PgLogin v-else msg="PostgreSQL Server Logaain" :currentServer="currentServer"
-            @login="currentServer = $event"/>
+   <PgLogin v-else msg="PostgreSQL Server Login" :currentServer="currentServer()"
+            @login="servers.push($event)"/>
   
        </div>
        <!-- <div> Results: {{ results }} </div> -->
@@ -367,7 +336,6 @@ window.huh = import('../../pgui.conf.json')
        <p class="uk-text-small uk-text-center">Copyright 2019 - <a href="https://github.com/zzseba78/Kick-Off">Created by KickOff</a> | Built with <a href="http://getuikit.com" title="Visit UIkit 3 site" target="_blank" data-uk-tooltip><span data-uk-icon="uikit"></span></a> </p>
       </footer>
      </div>
-    </div>
     <!-- /CONTENT -->
     <!-- OFFCANVAS -->
     <div id="offcanvas-nav" data-uk-offcanvas="flip: true; overlay: true">
@@ -396,10 +364,14 @@ window.huh = import('../../pgui.conf.json')
   
 </template>
 
-<style src="/src/assets/css/dashboard.css"> </style>
 <style>
 .sql-result .clusterize-scroll {
     max-height: 45vh;
+}
+
+.res pre {
+ margin: 0px;
+ padding: 0px;
 }
 
 
