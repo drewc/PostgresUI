@@ -6,7 +6,7 @@ Welcome to literate development!
 
 A lot of the code is in the gerbil language. The package is defined [[file:gerbil.org][here.]]
 
-For development have a look at the ~./bin/pgui~ script [[file:gerbil.org::*Dev gerbil script][here.]]
+For development have a look at the ~./bin/pgui-dev~ script [[file:gerbil.org::*Dev gerbil script][here.]]
 
 * History
 

@@ -1,0 +1,16 @@
+#+TITLE: (pg_)Type is what things may have.
+
+When preparing a query we are given the types on the returned columns as a
+number.
+
+We want to know more about it. This is where it comes from.
+
+* Type descriptions
+
+
+#+begin_src scheme
+(export #t)
+(import :std/db/postgresql  :std/db/postgresql-driver
+        :std/db/dbi)
+
+#+end_src
